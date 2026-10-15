@@ -309,6 +309,16 @@
         } else if (webviews.get(id)?.hibernating) {
           wakeAccount(acc);
         }
+        // Eğer Gmail tanıtım/about sayfasına takılmışsa doğrudan giriş sayfasına yönlendir
+        const entry = webviews.get(id);
+        if (entry?.wv && acc.service === 'gmail') {
+          try {
+            const curUrl = entry.wv.getURL();
+            if (curUrl && (curUrl.includes('/about/') || curUrl.includes('google.com/intl/'))) {
+              entry.wv.loadURL('https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/');
+            }
+          } catch (_) {}
+        }
       }
       webviews.get(id)?.wrap.classList.add('active');
       const svc = acc && window.getService(acc.service);

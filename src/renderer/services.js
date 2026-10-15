@@ -114,7 +114,7 @@ window.VUNO_SERVICES = [
     id: 'gmail',
     name: 'Gmail',
     category: 'email',
-    url: 'https://mail.google.com/',
+    url: 'https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/',
     color: '#EA4335',
     gradient: 'linear-gradient(135deg, #EA4335 0%, #D93025 50%, #B31412 100%)',
     icon: 'gmail',

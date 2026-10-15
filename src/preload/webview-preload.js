@@ -3,10 +3,15 @@
 // ve Vuno'dan gelen hızlı cevapları ilgili sohbete yazmak.
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
-contextBridge.exposeInMainWorld('__vunoBridge', {
-  notify: (data) => ipcRenderer.sendToHost('vuno:notification', data),
-  log: (msg) => ipcRenderer.sendToHost('vuno:log', String(msg))
-});
+// Google / Microsoft / Proton oturum açma sayfalarında preload çalıştırma (Güvenlik taramasına takılmaması için)
+const isAuthHost = typeof location !== 'undefined' && /accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|account\.proton\.me/i.test(location.hostname || '');
+
+if (!isAuthHost) {
+  contextBridge.exposeInMainWorld('__vunoBridge', {
+    notify: (data) => ipcRenderer.sendToHost('vuno:notification', data),
+    log: (msg) => ipcRenderer.sendToHost('vuno:log', String(msg))
+  });
+}
 
 // Sayfanın kendi dünyasında (main world) çalışacak kod
 const MAIN_WORLD = `(() => {
@@ -291,8 +296,11 @@ const MAIN_WORLD = `(() => {
 })();`;
 
 function inject() {
+  if (isAuthHost) return;
   webFrame.executeJavaScript(MAIN_WORLD).catch(() => {});
 }
 
-inject();
-window.addEventListener('DOMContentLoaded', inject);
+if (!isAuthHost) {
+  inject();
+  window.addEventListener('DOMContentLoaded', inject);
+}
