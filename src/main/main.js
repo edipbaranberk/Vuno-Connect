@@ -7,11 +7,9 @@ const path = require('path');
 const crypto = require('crypto');
 const Store = require('./store');
 
-// Servislerin "desteklenmeyen tarayıcı" uyarısı vermemesi için Electron izi olmayan bir Chrome UA kullanılır.
+// Servislerin "desteklenmeyen tarayıcı" uyarısı vermemesi için Electron izi olmayan temiz Chrome UA kullanılır.
 const CHROME_VERSION = process.versions.chrome || '130.0.0.0';
 const USER_AGENT = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROME_VERSION} Safari/537.36`;
-// Google oturum açma (accounts.google.com) sayfalarında "Tarayıcı güvenli olmayabilir" engelini aşan temiz Firefox UA
-const GOOGLE_AUTH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0';
 app.userAgentFallback = USER_AGENT;
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -308,14 +306,6 @@ function setupWebContentsHandling() {
 
     if (contents.getType() === 'webview') {
       contents.setUserAgent(USER_AGENT);
-      // accounts.google.com'a gidildiğinde Firefox UA'ya geç, Gmail'e dönünce standart UA'ya dön
-      contents.on('did-start-navigation', (_ev, url) => {
-        if (/accounts\.google\.com/i.test(url || '')) {
-          contents.setUserAgent(GOOGLE_AUTH_UA);
-        } else {
-          contents.setUserAgent(USER_AGENT);
-        }
-      });
       // Harici bağlantıları varsayılan tarayıcıda aç (Giriş/OAuth hariç)
       contents.setWindowOpenHandler(({ url }) => {
         if (/accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|appleid\.apple\.com|account\.proton\.me/i.test(url)) {
@@ -338,13 +328,9 @@ function configureSession(ses) {
   ses.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
   ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
 
-  // Google & Microsoft oturum açma güvenliği: Electron izlerini header'lardan arındır
+  // Temiz tarayıcı kimliği: Electron ve uygulama izlerini header'lardan arındır
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
-    if (/accounts\.google\.com/i.test(details.url)) {
-      details.requestHeaders['User-Agent'] = GOOGLE_AUTH_UA;
-    } else {
-      details.requestHeaders['User-Agent'] = USER_AGENT;
-    }
+    details.requestHeaders['User-Agent'] = USER_AGENT;
     delete details.requestHeaders['X-Electron-Version'];
     callback({ cancel: false, requestHeaders: details.requestHeaders });
   });

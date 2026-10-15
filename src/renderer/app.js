@@ -268,6 +268,8 @@
     renderSidebar();
   }
 
+  const CLEAN_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
+
   function wakeAccount(acc) {
     const entry = webviews.get(acc.id);
     if (!entry) return;
@@ -282,6 +284,7 @@
         entry.wv = document.createElement('webview');
         entry.wv.setAttribute('partition', `persist:vuno-${acc.id}`);
         entry.wv.setAttribute('src', svc.url);
+        entry.wv.setAttribute('useragent', CLEAN_USER_AGENT);
         entry.wv.setAttribute('webpreferences', 'spellcheck=yes');
         entry.wrap.appendChild(entry.wv);
         entry.ready = false;
@@ -309,12 +312,12 @@
         } else if (webviews.get(id)?.hibernating) {
           wakeAccount(acc);
         }
-        // Eğer Gmail tanıtım/about sayfasına takılmışsa doğrudan giriş sayfasına yönlendir
+        // Eğer Gmail tanıtım/about/hata/rejected sayfasına takılmışsa doğrudan temiz giriş sayfasına yönlendir
         const entry = webviews.get(id);
         if (entry?.wv && acc.service === 'gmail') {
           try {
             const curUrl = entry.wv.getURL();
-            if (curUrl && (curUrl.includes('/about/') || curUrl.includes('google.com/intl/'))) {
+            if (curUrl && (curUrl.includes('/about/') || curUrl.includes('google.com/intl/') || curUrl.includes('rejected') || curUrl.includes('denied') || curUrl.includes('/signin/error'))) {
               entry.wv.loadURL('https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/');
             }
           } catch (_) {}
@@ -348,6 +351,17 @@
       showError(entry, acc, e.errorDescription);
     });
 
+    // Google oturum açma sayfasında reddedilme veya hata durumunda otomatik toparlanma
+    wv.addEventListener('did-navigate', (e) => {
+      if (acc.service === 'gmail' && e.url && (e.url.includes('/signin/rejected') || e.url.includes('/signin/denied'))) {
+        setTimeout(() => {
+          try {
+            wv.loadURL('https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/');
+          } catch (_) {}
+        }, 1200);
+      }
+    });
+
     wv.addEventListener('page-title-updated', (e) => {
       const m = /\((\d+)\)/.exec(e.title) || /^(\d+)\s/.exec(e.title);
       const count = m ? parseInt(m[1], 10) : 0;
@@ -373,6 +387,7 @@
     const wv = document.createElement('webview');
     wv.setAttribute('partition', `persist:vuno-${acc.id}`);
     wv.setAttribute('src', svc.url);
+    wv.setAttribute('useragent', CLEAN_USER_AGENT);
     wv.setAttribute('webpreferences', 'spellcheck=yes');
     wrap.appendChild(wv);
     $('#webviews').appendChild(wrap);
@@ -1148,6 +1163,7 @@
     menu.innerHTML = `
       <div class="cm-head">${escapeHtml(svc.name)} • ${escapeHtml(acc.name)} (${acc.workspace === 'work' ? 'İş' : 'Kişisel'})</div>
       <button data-act="reload"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>Yeniden yükle</button>
+      <button data-act="reset-url"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5"/></svg>Giriş sayfasına dön</button>
       <button data-act="toggle-ws"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Grubu Değiştir: ${acc.workspace === 'work' ? 'Kişisel Yap' : 'İş Yap'}</button>
       <button data-act="mute"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z${acc.muted ? 'M15.5 8.5a5 5 0 0 1 0 7' : 'M23 9l-6 6M17 9l6 6'}"/></svg>${acc.muted ? 'Sesi aç' : 'Sessize al'}</button>
       <button data-act="rename"><svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Yeniden adlandır</button>
@@ -1165,6 +1181,13 @@
       const act = b.dataset.act;
       const entry = webviews.get(acc.id);
       if (act === 'reload') entry ? entry.wv.reload() : activate(acc.id);
+      if (act === 'reset-url') {
+        const target = svc.url;
+        if (entry?.wv) {
+          entry.wv.loadURL(target);
+          toast(`${svc.name} giriş sayfası yükleniyor...`);
+        }
+      }
       if (act === 'toggle-ws') {
         acc.workspace = acc.workspace === 'work' ? 'personal' : 'work';
         toast(`Hesap "${acc.workspace === 'work' ? 'İş' : 'Kişisel'}" grubuna taşındı`);
