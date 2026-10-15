@@ -131,7 +131,41 @@
 
   $$('.ws-btn').forEach((b) => b.addEventListener('click', () => setWorkspace(b.dataset.ws)));
 
-  /* ----------------------------- Kenar Çubuğu ----------------------------- */
+  /* ----------------------------- Kenar Çubuğu & Uçan Tooltip ----------------------------- */
+
+  let tooltipEl = null;
+  function getTooltipEl() {
+    if (!tooltipEl) {
+      tooltipEl = $('#floating-tooltip');
+      if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'floating-tooltip';
+        tooltipEl.className = 'floating-tooltip';
+        document.body.appendChild(tooltipEl);
+      }
+    }
+    return tooltipEl;
+  }
+
+  function bindTooltip(el, getHtml) {
+    if (!el) return;
+    el.addEventListener('mouseenter', () => {
+      const tt = getTooltipEl();
+      const rect = el.getBoundingClientRect();
+      const content = typeof getHtml === 'function' ? getHtml() : getHtml;
+      if (!content) return;
+      tt.innerHTML = content;
+      tt.style.top = `${rect.top + rect.height / 2}px`;
+      tt.style.left = `${rect.right + 12}px`;
+      tt.classList.add('visible');
+    });
+    el.addEventListener('mouseleave', () => {
+      if (tooltipEl) tooltipEl.classList.remove('visible');
+    });
+    el.addEventListener('click', () => {
+      if (tooltipEl) tooltipEl.classList.remove('visible');
+    });
+  }
 
   function renderSidebar() {
     const list = $('#account-list');
@@ -143,9 +177,10 @@
       const btn = document.createElement('button');
       btn.className = 'side-btn account-btn';
       btn.dataset.id = acc.id;
-      const isHib = webviews.get(acc.id)?.hibernating;
-      btn.classList.toggle('hibernating', !!isHib);
+      const isHib = !!(state.settings.ramSaver && webviews.get(acc.id)?.hibernating);
+      btn.classList.toggle('hibernating', isHib);
       btn.dataset.tip = `${svc.name} • ${acc.name}${isHib ? ' (Uykuda 💤)' : ''}`;
+      btn.setAttribute('title', `${svc.name} — ${acc.name}`);
       btn.id = `acc-${acc.id}`;
       btn.classList.toggle('active', state.activeId === acc.id);
       btn.classList.toggle('muted-acc', !!acc.muted);
@@ -157,6 +192,17 @@
         (webviews.get(acc.id)?.loading ? '<span class="loading-ring"></span>' : '');
       btn.addEventListener('click', () => activate(acc.id));
       btn.addEventListener('contextmenu', (e) => { e.preventDefault(); openContextMenu(acc, e.clientX, e.clientY); });
+
+      // Üstüne gelindiğinde hesabı net gösteren uçan etiket (Tooltip)
+      bindTooltip(btn, () => `
+        <div class="tip-header">
+          <span class="tip-badge" style="background:${svc.gradient}">${escapeHtml(svc.name)}</span>
+          ${acc.muted ? '<span class="tip-muted">🔕 Sessizde</span>' : ''}
+          ${count ? `<span class="tip-count">${count} yeni</span>` : ''}
+        </div>
+        <div class="tip-acc-name">${escapeHtml(acc.name)}</div>
+      `);
+
       list.appendChild(btn);
     }
     $('#btn-inbox').classList.toggle('active', state.activeId === 'inbox');
@@ -1422,6 +1468,11 @@
     $$('.ws-btn').forEach((b) => b.classList.toggle('active', b.dataset.ws === state.activeWorkspace));
 
     buildKeypad();
+    // Statik kenar çubuğu butonlarına uçan tooltip bağla
+    $$('.sidebar [data-tip]').forEach((b) => {
+      if (b.classList.contains('account-btn')) return;
+      bindTooltip(b, () => `<div class="tip-acc-name">${escapeHtml(b.dataset.tip)}</div>`);
+    });
     await applySettingsToUi();
 
     for (const acc of state.accounts) createWebview(acc);
