@@ -288,7 +288,83 @@ function startIdleWatcher() {
   }, 20000);
 }
 
-/* ----------------------------- Webview güvenliği ----------------------------- */
+/* ----------------------------- Webview güvenliği & CDP Enjeksiyonu ----------------------------- */
+
+const CDP_MASK_SCRIPT = `
+  try {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => undefined,
+      configurable: true
+    });
+    delete Object.getPrototypeOf(navigator).webdriver;
+  } catch (_) {}
+
+  try {
+    const brands = [
+      { brand: 'Google Chrome', version: '131' },
+      { brand: 'Chromium', version: '131' },
+      { brand: 'Not_A Brand', version: '24' }
+    ];
+    const fullVersionList = [
+      { brand: 'Google Chrome', version: '131.0.6778.86' },
+      { brand: 'Chromium', version: '131.0.6778.86' },
+      { brand: 'Not_A Brand', version: '24.0.0.0' }
+    ];
+
+    const uad = {
+      brands: brands,
+      mobile: false,
+      platform: 'Windows',
+      getHighEntropyValues: async () => ({
+        architecture: 'x86',
+        bitness: '64',
+        brands: brands,
+        fullVersionList: fullVersionList,
+        mobile: false,
+        model: '',
+        platform: 'Windows',
+        platformVersion: '15.0.0',
+        uaFullVersion: '131.0.6778.86'
+      }),
+      toJSON: () => ({
+        brands: brands,
+        mobile: false,
+        platform: 'Windows'
+      })
+    };
+
+    Object.defineProperty(navigator, 'userAgentData', {
+      get: () => uad,
+      configurable: true
+    });
+  } catch (_) {}
+
+  try {
+    if (!window.chrome) {
+      window.chrome = {};
+    }
+    if (!window.chrome.app) {
+      window.chrome.app = {
+        isInstalled: false,
+        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
+      };
+    }
+  } catch (_) {}
+`;
+
+function attachCdpMask(contents) {
+  try {
+    if (!contents || contents.isDestroyed()) return;
+    if (!contents.debugger.isAttached()) {
+      contents.debugger.attach('1.3');
+    }
+    contents.debugger.sendCommand('Page.enable').catch(() => {});
+    contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
+      source: CDP_MASK_SCRIPT
+    }).catch(() => {});
+  } catch (_) {}
+}
 
 function setupWebContentsHandling() {
   // Renderer'ın ekleyeceği her <webview> için güvenli ayarları zorla
@@ -308,77 +384,9 @@ function setupWebContentsHandling() {
     if (contents.getType() === 'webview') {
       contents.setUserAgent(USER_AGENT);
 
-      // Chrome DevTools Protocol (CDP) ile sayfa daha oluşmadan 0. milisaniyede script enjekte et
-      try {
-        if (!contents.debugger.isAttached()) {
-          contents.debugger.attach('1.3');
-        }
-        contents.debugger.sendCommand('Page.enable').catch(() => {});
-        contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
-          source: `
-            try {
-              Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined,
-                configurable: true
-              });
-              delete Object.getPrototypeOf(navigator).webdriver;
-            } catch (_) {}
-
-            try {
-              const brands = [
-                { brand: 'Google Chrome', version: '131' },
-                { brand: 'Chromium', version: '131' },
-                { brand: 'Not_A Brand', version: '24' }
-              ];
-              const fullVersionList = [
-                { brand: 'Google Chrome', version: '131.0.6778.86' },
-                { brand: 'Chromium', version: '131.0.6778.86' },
-                { brand: 'Not_A Brand', version: '24.0.0.0' }
-              ];
-
-              const uad = {
-                brands: brands,
-                mobile: false,
-                platform: 'Windows',
-                getHighEntropyValues: async () => ({
-                  architecture: 'x86',
-                  bitness: '64',
-                  brands: brands,
-                  fullVersionList: fullVersionList,
-                  mobile: false,
-                  model: '',
-                  platform: 'Windows',
-                  platformVersion: '15.0.0',
-                  uaFullVersion: '131.0.6778.86'
-                }),
-                toJSON: () => ({
-                  brands: brands,
-                  mobile: false,
-                  platform: 'Windows'
-                })
-              };
-
-              Object.defineProperty(navigator, 'userAgentData', {
-                get: () => uad,
-                configurable: true
-              });
-            } catch (_) {}
-
-            try {
-              if (!window.chrome) {
-                window.chrome = {};
-              }
-              if (!window.chrome.app) {
-                window.chrome.app = {
-                  isInstalled: false,
-                  InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-                  RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
-                };
-              }
-            } catch (_) {}
-          `
-        }).catch(() => {});
-      } catch (_) {}
+      // Sayfa oluşurken 0. milisaniyede ve did-start-loading aşamasında debugger'ı bağla
+      attachCdpMask(contents);
+      contents.on('did-start-loading', () => attachCdpMask(contents));
 
       // Harici bağlantıları varsayılan tarayıcıda aç (Giriş/OAuth hariç)
       contents.setWindowOpenHandler(({ url }) => {
@@ -666,14 +674,12 @@ function setupIpc() {
     return true;
   });
 
-  // Google tarafından şüpheli olarak damgalanmış eski auth çerezlerini sıfırla
+  // Google tarafından şüpheli olarak damgalanmış eski auth ve domain çerezlerini tamamen sıfırla
   ipcMain.handle('session:clear-google-cookies', async (_e, partition) => {
     if (typeof partition !== 'string' || !partition.startsWith('persist:vuno-')) return false;
     const ses = session.fromPartition(partition);
-    await ses.clearStorageData({
-      origin: 'https://accounts.google.com',
-      storages: ['cookies', 'localstorage', 'cache', 'serviceworkers']
-    });
+    await ses.clearStorageData();
+    await ses.clearCache();
     return true;
   });
 
@@ -734,16 +740,14 @@ function setupIpc() {
 app.whenReady().then(() => {
   store = new Store();
 
-  // Gmail hesaplarının daha önce damgalanmış eski Google çerezlerini sıfırla
+  // Gmail hesaplarının daha önce damgalanmış eski Google çerezlerini sıfırla (tüm partition, origin kısıtı olmadan)
   try {
     const accs = store.get('accounts') || [];
     for (const a of accs) {
       if (a.service === 'gmail') {
         const ses = session.fromPartition(`persist:vuno-${a.id}`);
-        ses.clearStorageData({
-          origin: 'https://accounts.google.com',
-          storages: ['cookies', 'localstorage', 'cache', 'serviceworkers']
-        }).catch(() => {});
+        ses.clearStorageData().catch(() => {});
+        ses.clearCache().catch(() => {});
       }
     }
   } catch (_) {}
