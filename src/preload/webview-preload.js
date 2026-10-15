@@ -1,50 +1,7 @@
 // Her servis (<webview>) içine yüklenen preload.
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
-// 1. Google ve bot tarama motorlarına karşı navigator.webdriver ve userAgentData'yı Main World içinde maskele
-const MASK_SCRIPT = `(() => {
-  try {
-    Object.defineProperty(navigator, 'webdriver', {
-      get: () => undefined,
-      configurable: true
-    });
-    delete Object.getPrototypeOf(navigator).webdriver;
-  } catch (_) {}
 
-  try {
-    const chromeBrands = [
-      { brand: 'Google Chrome', version: '131' },
-      { brand: 'Chromium', version: '131' },
-      { brand: 'Not_A Brand', version: '24' }
-    ];
-
-    if (navigator.userAgentData) {
-      Object.defineProperty(navigator, 'userAgentData', {
-        get: () => ({
-          brands: chromeBrands,
-          mobile: false,
-          platform: 'Windows',
-          getHighEntropyValues: async (hints) => ({
-            brands: chromeBrands,
-            mobile: false,
-            platform: 'Windows',
-            platformVersion: '15.0.0',
-            architecture: 'x86',
-            bitness: '64',
-            model: '',
-            uaFullVersion: '131.0.6778.86',
-            fullVersionList: chromeBrands
-          })
-        }),
-        configurable: true
-      });
-    }
-  } catch (_) {}
-})();`;
-
-try {
-  webFrame.executeJavaScript(MASK_SCRIPT);
-} catch (_) {}
 
 // Google / Microsoft / Proton oturum açma sayfaları kontrolü
 const isAuthHost = typeof location !== 'undefined' && /accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|account\.proton\.me/i.test(location.hostname || '');
@@ -341,7 +298,6 @@ const MAIN_WORLD = `(() => {
 })();`;
 
 function inject() {
-  try { webFrame.executeJavaScript(MASK_SCRIPT); } catch (_) {}
   if (!isAuthHost) {
     webFrame.executeJavaScript(MAIN_WORLD).catch(() => {});
   }

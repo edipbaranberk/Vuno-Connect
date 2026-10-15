@@ -307,6 +307,79 @@ function setupWebContentsHandling() {
 
     if (contents.getType() === 'webview') {
       contents.setUserAgent(USER_AGENT);
+
+      // Chrome DevTools Protocol (CDP) ile sayfa daha oluşmadan 0. milisaniyede script enjekte et
+      try {
+        if (!contents.debugger.isAttached()) {
+          contents.debugger.attach('1.3');
+        }
+        contents.debugger.sendCommand('Page.enable').catch(() => {});
+        contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
+          source: `
+            try {
+              Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined,
+                configurable: true
+              });
+              delete Object.getPrototypeOf(navigator).webdriver;
+            } catch (_) {}
+
+            try {
+              const brands = [
+                { brand: 'Google Chrome', version: '131' },
+                { brand: 'Chromium', version: '131' },
+                { brand: 'Not_A Brand', version: '24' }
+              ];
+              const fullVersionList = [
+                { brand: 'Google Chrome', version: '131.0.6778.86' },
+                { brand: 'Chromium', version: '131.0.6778.86' },
+                { brand: 'Not_A Brand', version: '24.0.0.0' }
+              ];
+
+              const uad = {
+                brands: brands,
+                mobile: false,
+                platform: 'Windows',
+                getHighEntropyValues: async () => ({
+                  architecture: 'x86',
+                  bitness: '64',
+                  brands: brands,
+                  fullVersionList: fullVersionList,
+                  mobile: false,
+                  model: '',
+                  platform: 'Windows',
+                  platformVersion: '15.0.0',
+                  uaFullVersion: '131.0.6778.86'
+                }),
+                toJSON: () => ({
+                  brands: brands,
+                  mobile: false,
+                  platform: 'Windows'
+                })
+              };
+
+              Object.defineProperty(navigator, 'userAgentData', {
+                get: () => uad,
+                configurable: true
+              });
+            } catch (_) {}
+
+            try {
+              if (!window.chrome) {
+                window.chrome = {};
+              }
+              if (!window.chrome.app) {
+                window.chrome.app = {
+                  isInstalled: false,
+                  InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+                  RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
+                };
+              }
+            } catch (_) {}
+          `
+        }).catch(() => {});
+      } catch (_) {}
+
       // Harici bağlantıları varsayılan tarayıcıda aç (Giriş/OAuth hariç)
       contents.setWindowOpenHandler(({ url }) => {
         if (/accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|appleid\.apple\.com|account\.proton\.me/i.test(url)) {
