@@ -1041,11 +1041,17 @@
   /* ----------------------------- Servis Ekleme ----------------------------- */
 
   let pendingService = null;
+  let activeAddCat = 'all';
 
-  function openAddModal(preselect) {
+  function renderAddServiceGrid() {
     const grid = $('#service-grid');
     grid.innerHTML = '';
-    for (const svc of window.VUNO_SERVICES) {
+    const filtered = window.VUNO_SERVICES.filter((svc) => {
+      if (activeAddCat === 'all') return true;
+      return (svc.category || 'messaging') === activeAddCat;
+    });
+
+    for (const svc of filtered) {
       const card = document.createElement('button');
       card.className = `svc-card ${svc.unavailable ? 'unavailable' : ''}`;
       card.id = `add-${svc.id}`;
@@ -1054,9 +1060,16 @@
       card.addEventListener('click', () => selectService(svc));
       grid.appendChild(card);
     }
+  }
+
+  function openAddModal(preselect) {
+    activeAddCat = 'all';
+    $$('#service-cat-tabs .cat-pill').forEach((b) => b.classList.toggle('active', b.dataset.cat === 'all'));
+    renderAddServiceGrid();
     $('#add-step').hidden = true;
     $('#add-notice').hidden = true;
-    grid.hidden = false;
+    $('#service-cat-tabs').hidden = false;
+    $('#service-grid').hidden = false;
     $('#add-modal').hidden = false;
     if (preselect) selectService(window.getService(preselect));
   }
@@ -1070,6 +1083,7 @@
     }
     pendingService = svc;
     $('#service-grid').hidden = true;
+    $('#service-cat-tabs').hidden = true;
     $('#add-notice').hidden = true;
     $('#add-step').hidden = false;
     $('#add-step-icon').outerHTML = `<div class="svc-icon lg" id="add-step-icon" style="background:${svc.gradient}">${svc.icon ? `<img src="https://cdn.simpleicons.org/${svc.icon}/ffffff" alt="" data-letter="${escapeHtml(svc.letter || svc.name[0])}"/>` : escapeHtml(svc.letter || svc.name[0])}</div>`;
@@ -1099,9 +1113,21 @@
   }
 
   $('#btn-add').addEventListener('click', () => openAddModal());
-  $('#add-back').addEventListener('click', () => { $('#add-step').hidden = true; $('#service-grid').hidden = false; });
+  $('#add-back').addEventListener('click', () => {
+    $('#add-step').hidden = true;
+    $('#service-cat-tabs').hidden = false;
+    $('#service-grid').hidden = false;
+  });
   $('#add-confirm').addEventListener('click', confirmAdd);
   $('#add-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmAdd(); });
+
+  $$('#service-cat-tabs .cat-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeAddCat = btn.dataset.cat;
+      $$('#service-cat-tabs .cat-pill').forEach((b) => b.classList.toggle('active', b === btn));
+      renderAddServiceGrid();
+    });
+  });
 
   /* ----------------------------- Bağlam Menüsü ----------------------------- */
 

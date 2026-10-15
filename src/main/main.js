@@ -306,8 +306,11 @@ function setupWebContentsHandling() {
 
     if (contents.getType() === 'webview') {
       contents.setUserAgent(USER_AGENT);
-      // Harici bağlantıları varsayılan tarayıcıda aç
+      // Harici bağlantıları varsayılan tarayıcıda aç (Giriş/OAuth hariç)
       contents.setWindowOpenHandler(({ url }) => {
+        if (/accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|appleid\.apple\.com|account\.proton\.me/i.test(url)) {
+          return { action: 'allow' };
+        }
         if (/^https?:\/\//.test(url)) shell.openExternal(url);
         return { action: 'deny' };
       });
@@ -324,6 +327,13 @@ function configureSession(ses) {
   const allowed = new Set(['notifications', 'media', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'mediaKeySystem']);
   ses.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
   ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
+
+  // Google & Microsoft oturum açma güvenliği: Electron izlerini header'lardan arındır
+  ses.webRequest.onBeforeSendHeaders((details, callback) => {
+    details.requestHeaders['User-Agent'] = USER_AGENT;
+    delete details.requestHeaders['X-Electron-Version'];
+    callback({ cancel: false, requestHeaders: details.requestHeaders });
+  });
 }
 
 /* ----------------------------- IPC ----------------------------- */

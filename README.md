@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <b>Tüm mesajlaşma platformları tek bir şık ve güçlü masaüstü merkezinde.</b><br />
-  WhatsApp, Instagram Direct, Facebook Messenger ve Telegram hesaplarınızı aynı anda yönetin, tek bir gelen kutusundan anında yanıtlayın.
+  <b>Tüm mesajlaşma ve e-posta platformları tek bir şık ve güçlü masaüstü merkezinde.</b><br />
+  WhatsApp, Instagram, Messenger, Telegram, Discord, Gmail, Outlook ve Proton Mail hesaplarınızı aynı anda yönetin, tek bir gelen kutusundan anında takip edin.
 </p>
 
 <p align="center">
@@ -21,9 +21,14 @@
 ## 🌟 Öne Çıkan Özellikler
 
 ### 📥 Birleşik Gelen Kutusu (Unified Inbox)
-* Farklı platformlardan gelen tüm yeni mesajları tek bir akışta kronolojik olarak toplayın.
+* Farklı mesajlaşma ve e-posta platformlarından gelen tüm bildirimleri tek bir akışta kronolojik olarak toplayın.
 * Sekmeler arasında kaybolmadan gelen mesajları doğrudan akış içinden okuyun ve cevaplayın.
 * Platform ve hesap filtreleri ile sadece ilgilendiğiniz iletişime odaklanın.
+
+### ✉️ E-Posta Entegrasyonu (Gmail, Outlook, Proton Mail, Yandex)
+* Tarayıcıda onlarca sekme tutmaya gerek kalmadan tüm e-posta hesaplarınıza sol menüden tek tıkla ulaşın.
+* Her hesap tamamen izole oturumda çalışır; iş ve kişisel e-postalarınız birbirine karışmaz.
+* Yeni gelen e-posta bildirimleri anında Birleşik Gelen Kutusu'na düşer.
 
 ### 🌐 Ücretsiz Anlık & Tersine Çeviri
 * **Gelen Mesajı Çevir:** Yabancı dilde gelen mesajları tek tıkla kendi dilinize çevirin.
