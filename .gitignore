@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Production builds
+dist/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Environment variables & local secrets
+.env
+.env.local
+*.local
+
+# Operating System files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+
+# IDE and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

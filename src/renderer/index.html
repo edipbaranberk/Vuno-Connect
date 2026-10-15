@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' data:;" />
+  <meta name="description" content="Vuno Messenger — WhatsApp, Instagram, Messenger, Telegram ve daha fazlası tek uygulamada." />
+  <title>Vuno Messenger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Başlık çubuğu (sürüklenebilir) -->
+  <header class="titlebar" id="titlebar">
+    <div class="brand">
+      <img src="../../assets/icon.png" alt="" class="brand-logo" />
+      <span class="brand-name">Vuno <b>Messenger</b></span>
+    </div>
+    <div class="titlebar-center" id="titlebar-title"></div>
+    <div class="titlebar-status">
+      <!-- Evrensel Arama butonu -->
+      <button class="pill pill-action" id="btn-search-trigger" title="Evrensel Arama (Ctrl+K)">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Ara <kbd>Ctrl K</kbd></span>
+      </button>
+      <!-- Çalışma Alanı Seçici -->
+      <div class="workspace-pill" id="workspace-switcher">
+        <button class="ws-btn active" data-ws="all">Tümü</button>
+        <button class="ws-btn" data-ws="personal">Kişisel</button>
+        <button class="ws-btn" data-ws="work">İş</button>
+      </div>
+      <span class="pill pill-dnd" id="dnd-pill" hidden>
+        <svg viewBox="0 0 24 24"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="m1 1 22 22"/></svg>
+        Rahatsız Etme
+      </span>
+    </div>
+  </header>
+
+  <div class="app">
+    <!-- Kenar çubuğu -->
+    <nav class="sidebar" id="sidebar" aria-label="Servisler">
+      <button class="side-btn inbox-btn active" id="btn-inbox" data-tip="Birleşik Gelen Kutusu">
+        <svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        <span class="badge" id="inbox-badge" hidden>0</span>
+      </button>
+      <div class="side-sep"></div>
+      <div class="account-list" id="account-list"></div>
+      <button class="side-btn add-btn" id="btn-add" data-tip="Servis ekle">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+
+      <div class="side-spacer"></div>
+
+      <!-- Hızlı Şablonlar Butonu -->
+      <button class="side-btn small" id="btn-open-templates" data-tip="Hazır Cevap Şablonları">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </button>
+      <!-- Ses Kaydı / Ses Metne Dökücü -->
+      <button class="side-btn small" id="btn-audio-tool" data-tip="Ses Metne Dökücü / Dikte">
+        <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+      </button>
+      <button class="side-btn small" id="btn-dnd" data-tip="Rahatsız Etme">
+        <svg viewBox="0 0 24 24"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="m1 1 22 22"/></svg>
+      </button>
+      <button class="side-btn small" id="btn-theme" data-tip="Tema değiştir">
+        <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="side-btn small" id="btn-lock" data-tip="Kilitle">
+        <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </button>
+      <button class="side-btn small" id="btn-settings" data-tip="Ayarlar">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </nav>
+
+    <!-- İçerik alanı -->
+    <main class="content" id="content">
+      <!-- Birleşik gelen kutusu -->
+      <section class="view inbox-view active" id="view-inbox">
+        <div class="inbox-header">
+          <div>
+            <h1>Birleşik Gelen Kutusu</h1>
+            <p class="muted" id="inbox-subtitle">Tüm servislerden gelen mesajlar tek yerde.</p>
+          </div>
+          <div class="inbox-actions">
+            <button class="btn ghost" id="btn-mark-all">
+              <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> Tümünü okundu say
+            </button>
+            <button class="btn ghost" id="btn-clear-inbox">
+              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg> Temizle
+            </button>
+          </div>
+        </div>
+        <div class="filter-chips" id="filter-chips"></div>
+        <div class="inbox-list" id="inbox-list"></div>
+
+        <!-- Boş durum / hoş geldin -->
+        <div class="empty-state" id="empty-state" hidden>
+          <div class="empty-orb"></div>
+          <h2 id="empty-title">Henüz mesaj yok</h2>
+          <p class="muted" id="empty-text">Yeni mesajlar geldiğinde burada görünecek ve buradan cevaplayabileceksin.</p>
+          <div class="welcome-grid" id="welcome-grid"></div>
+        </div>
+      </section>
+
+      <!-- Servis webview'leri buraya eklenir -->
+      <div class="webviews" id="webviews"></div>
+    </main>
+  </div>
+
+  <!-- Evrensel Arama Modalı (Ctrl+K) -->
+  <div class="modal-backdrop" id="search-modal" hidden>
+    <div class="modal search-dialog">
+      <div class="search-box-head">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="global-search-input" class="search-box-input" placeholder="Tüm servislerde mesaj veya kişi ara..." autocomplete="off" />
+        <span class="esc-badge">ESC</span>
+      </div>
+      <div class="search-results-list" id="search-results-list"></div>
+    </div>
+  </div>
+
+  <!-- Hazır Şablonlar Modalı -->
+  <div class="modal-backdrop" id="templates-modal" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Hazır Şablonlar / Cevaplar ⚡</h2>
+        <button class="icon-btn" data-close="templates-modal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="muted">Sık kullandığın hazır mesajları kaydet; gelen kutusunda tek tıkla yapıştırıp gönder.</p>
+      <div class="template-add-row">
+        <input class="input" id="new-template-title" placeholder="Başlık (örn. IBAN)" style="max-width:180px;" />
+        <input class="input grow" id="new-template-text" placeholder="Gönderilecek hazır mesaj..." />
+        <button class="btn primary" id="btn-add-template">Ekle</button>
+      </div>
+      <div class="templates-list" id="templates-list"></div>
+    </div>
+  </div>
+
+  <!-- Ses Metne Dökücü / Dikte Modalı -->
+  <div class="modal-backdrop" id="audio-modal" hidden>
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-head">
+        <h2>Ses Metne Dökücü / Dikte 🎙️</h2>
+        <button class="icon-btn" data-close="audio-modal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="muted">Mikrofonuna konuşarak sesini anında Türkçe metne dönüştür ve panoya kopyala.</p>
+      <div class="audio-box">
+        <button class="mic-record-btn" id="btn-toggle-mic">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </button>
+        <span class="mic-status" id="mic-status">Mikrofona basarak konuşmaya başla</span>
+      </div>
+      <textarea class="input" id="transcribed-text" rows="4" placeholder="Dönüştürülen metin burada belirecek..."></textarea>
+      <div class="modal-foot">
+        <button class="btn ghost" id="btn-clear-audio-text">Temizle</button>
+        <button class="btn primary" id="btn-copy-audio-text">Metni Kopyala</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hatırlatıcı / Erteleme (Snooze) Modalı -->
+  <div class="modal-backdrop" id="snooze-modal" hidden>
+    <div class="modal" style="max-width: 420px;">
+      <div class="modal-head">
+        <h2>Mesajı Ertele 🕒</h2>
+        <button class="icon-btn" data-close="snooze-modal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="muted" id="snooze-target-desc">Bu mesajı ne zaman tekrar hatırlatayım?</p>
+      <div class="snooze-options">
+        <button class="btn ghost full-width" data-snooze-min="15">15 Dakika Sonra</button>
+        <button class="btn ghost full-width" data-snooze-min="60">1 Saat Sonra</button>
+        <button class="btn ghost full-width" data-snooze-min="180">3 Saat Sonra</button>
+        <button class="btn ghost full-width" data-snooze-min="1440">Yarın Sabah (24 Saat)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Servis ekleme penceresi -->
+  <div class="modal-backdrop" id="add-modal" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Servis ekle</h2>
+        <button class="icon-btn" data-close="add-modal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="muted">Aynı servisten istediğin kadar hesap ekleyebilirsin. Her hesap ayrı ve izole bir oturumda çalışır.</p>
+      <div class="service-grid" id="service-grid"></div>
+      <div class="add-step" id="add-step" hidden>
+        <div class="add-step-row">
+          <div class="svc-icon lg" id="add-step-icon"></div>
+          <div class="grow">
+            <label for="add-name" class="label">Hesap adı</label>
+            <input id="add-name" class="input" maxlength="32" placeholder="Örn. Kişisel, İş..." />
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn ghost" id="add-back">Geri</button>
+          <button class="btn primary" id="add-confirm">Ekle</button>
+        </div>
+      </div>
+      <div class="notice" id="add-notice" hidden></div>
+    </div>
+  </div>
+
+  <!-- Ayarlar penceresi -->
+  <div class="modal-backdrop" id="settings-modal" hidden>
+    <div class="modal wide">
+      <div class="modal-head">
+        <h2>Ayarlar</h2>
+        <button class="icon-btn" data-close="settings-modal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="settings-layout">
+        <div class="settings-tabs" id="settings-tabs">
+          <button class="tab active" data-tab="general">Genel</button>
+          <button class="tab" data-tab="notifications">Bildirimler</button>
+          <button class="tab" data-tab="dnd">Rahatsız Etme</button>
+          <button class="tab" data-tab="performance">RAM & Performans</button>
+          <button class="tab" data-tab="ai">Yapay Zeka (AI)</button>
+          <button class="tab" data-tab="security">Güvenlik</button>
+          <button class="tab" data-tab="about">Hakkında</button>
+        </div>
+        <div class="settings-panels">
+          <div class="panel active" data-panel="general">
+            <div class="setting">
+              <div><b>Tema</b><span>Uygulamanın görünümü</span></div>
+              <div class="segmented" id="seg-theme">
+                <button data-value="dark">Karanlık</button>
+                <button data-value="light">Aydınlık</button>
+                <button data-value="system">Sistem</button>
+              </div>
+            </div>
+            <label class="setting">
+              <div><b>Windows ile başlat</b><span>Bilgisayar açıldığında Vuno arka planda başlasın</span></div>
+              <input type="checkbox" class="switch" data-setting="startWithWindows" />
+            </label>
+            <label class="setting">
+              <div><b>Simge durumunda başlat</b><span>Açılışta pencereyi gösterme, sistem tepsisinde bekle</span></div>
+              <input type="checkbox" class="switch" data-setting="startMinimized" />
+            </label>
+            <label class="setting">
+              <div><b>Kapatınca tepsiye küçült</b><span>Pencereyi kapatınca uygulama arka planda çalışmaya devam etsin</span></div>
+              <input type="checkbox" class="switch" data-setting="closeToTray" />
+            </label>
+          </div>
+
+          <div class="panel" data-panel="notifications">
+            <label class="setting">
+              <div><b>Masaüstü bildirimleri</b><span>Yeni mesaj gelince bildir</span></div>
+              <input type="checkbox" class="switch" data-setting="notifications" />
+            </label>
+            <label class="setting">
+              <div><b>Hızlı cevap pop-up'ı</b><span>Bildirim kartından doğrudan cevap yaz (kapalıysa Windows bildirimi kullanılır)</span></div>
+              <input type="checkbox" class="switch" data-setting="popup" />
+            </label>
+            <label class="setting">
+              <div><b>Mesaj önizlemesi</b><span>Bildirimde mesaj içeriğini göster</span></div>
+              <input type="checkbox" class="switch" data-setting="showPreview" />
+            </label>
+            <label class="setting">
+              <div><b>Bildirim sesi</b><span>Yeni mesajda Vuno sesi çal</span></div>
+              <input type="checkbox" class="switch" data-setting="sound" />
+            </label>
+            <div class="setting">
+              <div><b>Sesi dene</b><span>Bildirim sesini önizle</span></div>
+              <button class="btn ghost" id="btn-test-sound">Çal</button>
+            </div>
+          </div>
+
+          <div class="panel" data-panel="dnd">
+            <label class="setting">
+              <div><b>Rahatsız Etme</b><span>Tüm bildirimleri ve sesleri sustur</span></div>
+              <input type="checkbox" class="switch" data-setting="dnd" />
+            </label>
+            <label class="setting">
+              <div><b>Zamanlanmış</b><span>Belirli saatler arasında otomatik aç</span></div>
+              <input type="checkbox" class="switch" id="dnd-schedule-enabled" />
+            </label>
+            <div class="setting">
+              <div><b>Saat aralığı</b><span>Örn. 23:00 – 08:00</span></div>
+              <div class="time-range">
+                <input type="time" class="input small" id="dnd-from" />
+                <span>–</span>
+                <input type="time" class="input small" id="dnd-to" />
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" data-panel="performance">
+            <label class="setting">
+              <div><b>RAM Tasarrufu (Sekme Uyku Modu)</b><span>Arka plandaki sekmelerin kaynak kullanımını kısıtlar (Gecikmesiz bildirimler ve anında hızlı cevap için KAPALI önerilir)</span></div>
+              <input type="checkbox" class="switch" data-setting="ramSaver" />
+            </label>
+            <div class="setting">
+              <div><b>Uyutma Süresi</b><span>Sekmeye tıklanmadıktan sonra kaç dakika sonra tasarruf moduna geçilsin</span></div>
+              <select class="input small" id="ram-saver-minutes">
+                <option value="15">15 dakika</option>
+                <option value="30">30 dakika (Önerilen)</option>
+                <option value="60">1 saat</option>
+              </select>
+            </div>
+            <p class="muted small-text">💡 Not: Gelen Kutusu'ndan tek tıkla mesaj yanıtlamak ve arka planda WhatsApp/Instagram bildirimlerini anlık almak için bu ayarın kapalı kalması önerilir.</p>
+          </div>
+
+          <div class="panel" data-panel="ai">
+            <div class="setting">
+              <div><b>Çeviri Motoru (Tüm Kullanıcılar İçin)</b><span>Mesajları çevirirken ve cevap çevirirken kullanılacak motor</span></div>
+              <select class="input" id="tr-engine-select">
+                <option value="google-free">Google Translate (Ücretsiz • Limitsiz & Hızlı)</option>
+                <option value="mymemory-free">MyMemory Translate (Ücretsiz • Alternatif)</option>
+                <option value="gemini">Google Gemini AI (API Anahtarı ile Akıllı Çeviri)</option>
+              </select>
+            </div>
+            <div class="setting">
+              <div><b>Gemini Modeli</b><span>Google Generative AI modeli</span></div>
+              <select class="input" id="ai-model-select">
+                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite (Önerilen • Tamamen Ücretsiz & Hızlı)</option>
+                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Kart Tanımlaması / Bakiye İster 💳)</option>
+              </select>
+            </div>
+            <div class="setting">
+              <div><b>Google Gemini API Anahtarı</b><span>Girdiğinizde AI Önerileri ve Özetleme özellikleri açılır (boşsa ücretsiz çeviriler çalışır)</span></div>
+            </div>
+            <div style="margin-top:10px;">
+              <input type="password" class="input" id="ai-key-input" placeholder="AIzaSy... ile başlayan Gemini API Anahtarı (Opsiyonel)" />
+              <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="btn primary" id="btn-save-ai-key">Anahtarı Kaydet</button>
+                <button class="btn ghost" id="btn-test-ai-key" type="button">⚡ Bağlantıyı Test Et</button>
+              </div>
+              <div id="ai-test-status" style="margin-top:10px;font-size:12.5px;display:none;"></div>
+            </div>
+            <div style="margin-top:16px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);font-size:12px;color:var(--text-2);line-height:1.6;">
+              💡 <b>Bilgilendirme:</b><br/>
+              • <b>🌐 Çevir</b> ve <b>🌐 [PL] Çevirerek Gönder:</b> API anahtarı olmadan tamamen ücretsizdir.<br/>
+              • <b>✨ AI Önerileri</b> ve <b>📝 Özetle:</b> Yalnızca Gemini anahtarı eklendiğinde aktifleşir.
+            </div>
+          </div>
+
+          <div class="panel" data-panel="security">
+            <div class="setting">
+              <div><b>Uygulama kilidi</b><span id="lock-status">PIN ile uygulamayı koru</span></div>
+              <div class="row-gap">
+                <button class="btn primary" id="btn-set-pin">PIN belirle</button>
+                <button class="btn danger ghost" id="btn-remove-pin" hidden>Kaldır</button>
+              </div>
+            </div>
+            <div class="setting">
+              <div><b>Otomatik kilit</b><span>Bilgisayar boşta kaldığında kilitle</span></div>
+              <select class="input small" id="auto-lock">
+                <option value="0">Kapalı</option>
+                <option value="1">1 dakika</option>
+                <option value="5">5 dakika</option>
+                <option value="15">15 dakika</option>
+                <option value="30">30 dakika</option>
+                <option value="60">1 saat</option>
+              </select>
+            </div>
+            <div class="pin-setup" id="pin-setup" hidden>
+              <input type="password" inputmode="numeric" maxlength="12" class="input" id="pin-new" placeholder="Yeni PIN (4-12 hane)" />
+              <input type="password" inputmode="numeric" maxlength="12" class="input" id="pin-confirm" placeholder="PIN tekrar" />
+              <button class="btn primary" id="btn-save-pin">Kaydet</button>
+            </div>
+            <p class="muted small-text">Ekran Windows tarafından kilitlendiğinde Vuno da otomatik kilitlenir.</p>
+          </div>
+
+          <div class="panel" data-panel="about">
+            <div class="about">
+              <img src="../../assets/icon.png" alt="Vuno" />
+              <div>
+                <h3>Vuno Messenger <span class="muted">v1.0.0</span></h3>
+                <p class="muted">Tüm mesajların, tek uygulamada. Hesap bilgilerin yalnızca bu bilgisayarda, her hesap için ayrı ve izole oturumlarda saklanır. Vuno hiçbir sunucuya veri göndermez.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hesap sağ tık menüsü -->
+  <div class="context-menu" id="context-menu" hidden></div>
+
+  <!-- Kilit ekranı -->
+  <div class="lock-screen" id="lock-screen" hidden>
+    <div class="lock-card">
+      <img src="../../assets/icon.png" alt="" class="lock-logo" />
+      <h2>Vuno kilitli</h2>
+      <p class="muted">Devam etmek için PIN kodunu gir</p>
+      <div class="pin-dots" id="pin-dots"></div>
+      <input type="password" inputmode="numeric" maxlength="12" id="lock-input" class="lock-input" autocomplete="off" />
+      <div class="keypad" id="keypad"></div>
+      <p class="lock-error" id="lock-error"></p>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="services.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

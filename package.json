@@ -1,0 +1,40 @@
+{
+  "name": "vuno-messenger",
+  "productName": "Vuno Messenger",
+  "version": "1.0.0",
+  "description": "WhatsApp, Instagram, Messenger, Telegram ve daha fazlasını tek uygulamada yönetin.",
+  "main": "src/main/main.js",
+  "author": "Vuno",
+  "license": "GPL-3.0-or-later",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.vuno.messenger",
+    "productName": "Vuno Messenger",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3"
+  }
+}
