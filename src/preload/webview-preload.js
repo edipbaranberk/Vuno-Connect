@@ -6,12 +6,15 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 // Google / Microsoft / Proton oturum açma sayfalarında preload çalıştırma (Güvenlik taramasına takılmaması için)
 const isAuthHost = typeof location !== 'undefined' && /accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|account\.proton\.me/i.test(location.hostname || '');
 
-if (!isAuthHost) {
-  contextBridge.exposeInMainWorld('__vunoBridge', {
-    notify: (data) => ipcRenderer.sendToHost('vuno:notification', data),
-    log: (msg) => ipcRenderer.sendToHost('vuno:log', String(msg))
-  });
+if (isAuthHost) {
+  // Auth sayfalarında hiçbir şey çalıştırma, doğrudan çık
+  return;
 }
+
+contextBridge.exposeInMainWorld('__vunoBridge', {
+  notify: (data) => ipcRenderer.sendToHost('vuno:notification', data),
+  log: (msg) => ipcRenderer.sendToHost('vuno:log', String(msg))
+});
 
 // Sayfanın kendi dünyasında (main world) çalışacak kod
 const MAIN_WORLD = `(() => {

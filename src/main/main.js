@@ -7,10 +7,10 @@ const path = require('path');
 const crypto = require('crypto');
 const Store = require('./store');
 
-// Servislerin "desteklenmeyen tarayıcı" uyarısı vermemesi için Electron izi olmayan temiz Chrome UA kullanılır.
-const CHROME_VERSION = process.versions.chrome || '130.0.0.0';
-const USER_AGENT = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${CHROME_VERSION} Safari/537.36`;
-app.userAgentFallback = USER_AGENT;
+// Servislerin ve Google'ın güvenli tarayıcı olarak tanıması için saf Chrome UA
+const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+const USER_AGENT = CHROME_UA;
+app.userAgentFallback = CHROME_UA;
 
 const ROOT = path.join(__dirname, '..', '..');
 const ICON_PATH = path.join(ROOT, 'assets', 'icon.png');
@@ -324,14 +324,22 @@ function setupWebContentsHandling() {
 }
 
 function configureSession(ses) {
-  ses.setUserAgent(USER_AGENT);
+  ses.setUserAgent(CHROME_UA);
   const allowed = new Set(['notifications', 'media', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'mediaKeySystem']);
   ses.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
   ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
 
-  // Temiz tarayıcı kimliği: Electron ve uygulama izlerini header'lardan arındır
+  // Giden tüm isteklerde User-Agent'ı ez ve Google'ın Electron'u yakaladığı Client Hints başlıklarını temizle
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
-    details.requestHeaders['User-Agent'] = USER_AGENT;
+    details.requestHeaders['User-Agent'] = CHROME_UA;
+    delete details.requestHeaders['Sec-CH-UA'];
+    delete details.requestHeaders['Sec-CH-UA-Mobile'];
+    delete details.requestHeaders['Sec-CH-UA-Platform'];
+    delete details.requestHeaders['Sec-CH-UA-Full-Version-List'];
+    delete details.requestHeaders['sec-ch-ua'];
+    delete details.requestHeaders['sec-ch-ua-mobile'];
+    delete details.requestHeaders['sec-ch-ua-platform'];
+    delete details.requestHeaders['sec-ch-ua-full-version-list'];
     delete details.requestHeaders['X-Electron-Version'];
     callback({ cancel: false, requestHeaders: details.requestHeaders });
   });
@@ -576,66 +584,6 @@ function setupIpc() {
     await ses.clearStorageData();
     await ses.clearCache();
     return true;
-  });
-
-  // Google / OAuth için harici izole giriş penceresi
-  ipcMain.handle('vuno:open-auth-window', async (_e, { accountId, service, name }) => {
-    const partition = `persist:vuno-${accountId}`;
-    const ses = session.fromPartition(partition);
-    // Varsa eski reddedilmiş çerezleri temizleyip taze başlat
-    await ses.clearStorageData({ storages: ['cookies', 'localstorage'] });
-
-    const authWin = new BrowserWindow({
-      width: 540,
-      height: 720,
-      title: `Giriş Yap — ${name || 'Google'} (Vuno Messenger)`,
-      icon: ICON_PATH,
-      parent: mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
-      modal: false,
-      autoHideMenuBar: true,
-      backgroundColor: '#1a1b1e',
-      webPreferences: {
-        partition,
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: false,
-        spellcheck: true
-      }
-    });
-
-    authWin.webContents.setUserAgent(USER_AGENT);
-
-    const loginUrl = service === 'gmail'
-      ? 'https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/'
-      : 'https://accounts.google.com/';
-
-    authWin.loadURL(loginUrl);
-
-    return new Promise((resolve) => {
-      let resolved = false;
-
-      const checkFinish = (url) => {
-        if (!url || resolved) return;
-        // Gmail ana ekranına ulaşıldığında oturum başarıyla tamamlanmıştır
-        if (/mail\.google\.com\/mail/i.test(url) && !url.includes('accounts.google.com') && !url.includes('/about/')) {
-          resolved = true;
-          setTimeout(() => {
-            if (!authWin.isDestroyed()) authWin.close();
-            resolve({ ok: true, accountId, url });
-          }, 1000);
-        }
-      };
-
-      authWin.webContents.on('did-navigate', (_ev, url) => checkFinish(url));
-      authWin.webContents.on('did-navigate-in-page', (_ev, url) => checkFinish(url));
-
-      authWin.on('closed', () => {
-        if (!resolved) {
-          resolved = true;
-          resolve({ ok: false, accountId, closedByUser: true });
-        }
-      });
-    });
   });
 
   // Renderer'dan gelen yeni mesaj bildirimi
