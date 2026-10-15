@@ -329,18 +329,25 @@ function configureSession(ses) {
   ses.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
   ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
 
-  // Giden tüm isteklerde User-Agent'ı ez ve Google'ın Electron'u yakaladığı Client Hints başlıklarını temizle
+  // Giden tüm isteklerde User-Agent ve Sec-CH-UA başlıklarını gerçek Chrome 131 değerleriyle spoof et
   ses.webRequest.onBeforeSendHeaders((details, callback) => {
     details.requestHeaders['User-Agent'] = CHROME_UA;
-    delete details.requestHeaders['Sec-CH-UA'];
-    delete details.requestHeaders['Sec-CH-UA-Mobile'];
-    delete details.requestHeaders['Sec-CH-UA-Platform'];
-    delete details.requestHeaders['Sec-CH-UA-Full-Version-List'];
+
+    // Küçük harfli varyantları temizle
     delete details.requestHeaders['sec-ch-ua'];
     delete details.requestHeaders['sec-ch-ua-mobile'];
     delete details.requestHeaders['sec-ch-ua-platform'];
     delete details.requestHeaders['sec-ch-ua-full-version-list'];
+
+    // Gerçek Chrome 131 Client Hints başlıklarıyla ez
+    details.requestHeaders['Sec-CH-UA'] = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"';
+    details.requestHeaders['Sec-CH-UA-Mobile'] = '?0';
+    details.requestHeaders['Sec-CH-UA-Platform'] = '"Windows"';
+
+    // Electron izini temizle
     delete details.requestHeaders['X-Electron-Version'];
+    delete details.requestHeaders['x-electron-version'];
+
     callback({ cancel: false, requestHeaders: details.requestHeaders });
   });
 }
@@ -586,6 +593,17 @@ function setupIpc() {
     return true;
   });
 
+  // Google tarafından şüpheli olarak damgalanmış eski auth çerezlerini sıfırla
+  ipcMain.handle('session:clear-google-cookies', async (_e, partition) => {
+    if (typeof partition !== 'string' || !partition.startsWith('persist:vuno-')) return false;
+    const ses = session.fromPartition(partition);
+    await ses.clearStorageData({
+      origin: 'https://accounts.google.com',
+      storages: ['cookies', 'localstorage', 'cache', 'serviceworkers']
+    });
+    return true;
+  });
+
   // Renderer'dan gelen yeni mesaj bildirimi
   ipcMain.on('notify', (_e, n) => {
     const s = settings();
@@ -642,6 +660,21 @@ function setupIpc() {
 
 app.whenReady().then(() => {
   store = new Store();
+
+  // Gmail hesaplarının daha önce damgalanmış eski Google çerezlerini sıfırla
+  try {
+    const accs = store.get('accounts') || [];
+    for (const a of accs) {
+      if (a.service === 'gmail') {
+        const ses = session.fromPartition(`persist:vuno-${a.id}`);
+        ses.clearStorageData({
+          origin: 'https://accounts.google.com',
+          storages: ['cookies', 'localstorage', 'cache', 'serviceworkers']
+        }).catch(() => {});
+      }
+    }
+  } catch (_) {}
+
   setupWebContentsHandling();
   setupIpc();
   createMainWindow();

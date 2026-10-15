@@ -1,20 +1,62 @@
 // Her servis (<webview>) içine yüklenen preload.
-// Görevi: Sayfanın Notification API'sini yakalayıp mesajları Vuno'ya iletmek
-// ve Vuno'dan gelen hızlı cevapları ilgili sohbete yazmak.
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
-// Google / Microsoft / Proton oturum açma sayfalarında preload çalıştırma (Güvenlik taramasına takılmaması için)
+// 1. Google ve bot tarama motorlarına karşı navigator.webdriver ve userAgentData'yı Main World içinde maskele
+const MASK_SCRIPT = `(() => {
+  try {
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => undefined,
+      configurable: true
+    });
+    delete Object.getPrototypeOf(navigator).webdriver;
+  } catch (_) {}
+
+  try {
+    const chromeBrands = [
+      { brand: 'Google Chrome', version: '131' },
+      { brand: 'Chromium', version: '131' },
+      { brand: 'Not_A Brand', version: '24' }
+    ];
+
+    if (navigator.userAgentData) {
+      Object.defineProperty(navigator, 'userAgentData', {
+        get: () => ({
+          brands: chromeBrands,
+          mobile: false,
+          platform: 'Windows',
+          getHighEntropyValues: async (hints) => ({
+            brands: chromeBrands,
+            mobile: false,
+            platform: 'Windows',
+            platformVersion: '15.0.0',
+            architecture: 'x86',
+            bitness: '64',
+            model: '',
+            uaFullVersion: '131.0.6778.86',
+            fullVersionList: chromeBrands
+          })
+        }),
+        configurable: true
+      });
+    }
+  } catch (_) {}
+})();`;
+
+try {
+  webFrame.executeJavaScript(MASK_SCRIPT);
+} catch (_) {}
+
+// Google / Microsoft / Proton oturum açma sayfaları kontrolü
 const isAuthHost = typeof location !== 'undefined' && /accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|account\.proton\.me/i.test(location.hostname || '');
 
-if (isAuthHost) {
-  // Auth sayfalarında hiçbir şey çalıştırma, doğrudan çık
-  return;
+if (!isAuthHost) {
+  try {
+    contextBridge.exposeInMainWorld('__vunoBridge', {
+      notify: (data) => ipcRenderer.sendToHost('vuno:notification', data),
+      log: (msg) => ipcRenderer.sendToHost('vuno:log', String(msg))
+    });
+  } catch (_) {}
 }
-
-contextBridge.exposeInMainWorld('__vunoBridge', {
-  notify: (data) => ipcRenderer.sendToHost('vuno:notification', data),
-  log: (msg) => ipcRenderer.sendToHost('vuno:log', String(msg))
-});
 
 // Sayfanın kendi dünyasında (main world) çalışacak kod
 const MAIN_WORLD = `(() => {
@@ -299,11 +341,11 @@ const MAIN_WORLD = `(() => {
 })();`;
 
 function inject() {
-  if (isAuthHost) return;
-  webFrame.executeJavaScript(MAIN_WORLD).catch(() => {});
+  try { webFrame.executeJavaScript(MASK_SCRIPT); } catch (_) {}
+  if (!isAuthHost) {
+    webFrame.executeJavaScript(MAIN_WORLD).catch(() => {});
+  }
 }
 
-if (!isAuthHost) {
-  inject();
-  window.addEventListener('DOMContentLoaded', inject);
-}
+inject();
+window.addEventListener('DOMContentLoaded', inject);

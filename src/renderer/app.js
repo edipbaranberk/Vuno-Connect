@@ -312,6 +312,17 @@
         } else if (webviews.get(id)?.hibernating) {
           wakeAccount(acc);
         }
+        // Eğer Gmail daha önce reddedilmiş/takılmış sayfadaysa çerezleri temizleyip taze giriş ekranına yönlendir
+        const entry = webviews.get(id);
+        if (entry?.wv && acc.service === 'gmail') {
+          try {
+            const curUrl = entry.wv.getURL();
+            if (curUrl && (curUrl.includes('/about/') || curUrl.includes('google.com/intl/') || curUrl.includes('rejected') || curUrl.includes('denied'))) {
+              window.vuno.clearGoogleCookies(`persist:vuno-${acc.id}`).catch(() => {});
+              entry.wv.loadURL('https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/');
+            }
+          } catch (_) {}
+        }
       }
       webviews.get(id)?.wrap.classList.add('active');
       const svc = acc && window.getService(acc.service);
@@ -1166,9 +1177,12 @@
       if (act === 'reload') entry ? entry.wv.reload() : activate(acc.id);
       if (act === 'reset-url') {
         const target = svc.url;
+        if (acc.service === 'gmail') {
+          window.vuno.clearGoogleCookies(`persist:vuno-${acc.id}`).catch(() => {});
+        }
         if (entry?.wv) {
           entry.wv.loadURL(target);
-          toast(`${svc.name} giriş sayfası yükleniyor...`);
+          toast(`${svc.name} giriş sayfası temizlenerek yükleniyor...`);
         }
       }
       if (act === 'toggle-ws') {
