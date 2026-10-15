@@ -27,6 +27,7 @@ let popupQueue = [];
 let idleTimer = null;
 
 app.setAppUserModelId('com.vuno.messenger');
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 if (process.env.VUNO_SMOKE_USERDATA) app.setPath('userData', process.env.VUNO_SMOKE_USERDATA);
 
 // Tek örnek kilidi: ikinci kez açılırsa mevcut pencereyi öne getir, yenisini anında kapat
@@ -575,6 +576,66 @@ function setupIpc() {
     await ses.clearStorageData();
     await ses.clearCache();
     return true;
+  });
+
+  // Google / OAuth için harici izole giriş penceresi
+  ipcMain.handle('vuno:open-auth-window', async (_e, { accountId, service, name }) => {
+    const partition = `persist:vuno-${accountId}`;
+    const ses = session.fromPartition(partition);
+    // Varsa eski reddedilmiş çerezleri temizleyip taze başlat
+    await ses.clearStorageData({ storages: ['cookies', 'localstorage'] });
+
+    const authWin = new BrowserWindow({
+      width: 540,
+      height: 720,
+      title: `Giriş Yap — ${name || 'Google'} (Vuno Messenger)`,
+      icon: ICON_PATH,
+      parent: mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
+      modal: false,
+      autoHideMenuBar: true,
+      backgroundColor: '#1a1b1e',
+      webPreferences: {
+        partition,
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        spellcheck: true
+      }
+    });
+
+    authWin.webContents.setUserAgent(USER_AGENT);
+
+    const loginUrl = service === 'gmail'
+      ? 'https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/'
+      : 'https://accounts.google.com/';
+
+    authWin.loadURL(loginUrl);
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      const checkFinish = (url) => {
+        if (!url || resolved) return;
+        // Gmail ana ekranına ulaşıldığında oturum başarıyla tamamlanmıştır
+        if (/mail\.google\.com\/mail/i.test(url) && !url.includes('accounts.google.com') && !url.includes('/about/')) {
+          resolved = true;
+          setTimeout(() => {
+            if (!authWin.isDestroyed()) authWin.close();
+            resolve({ ok: true, accountId, url });
+          }, 1000);
+        }
+      };
+
+      authWin.webContents.on('did-navigate', (_ev, url) => checkFinish(url));
+      authWin.webContents.on('did-navigate-in-page', (_ev, url) => checkFinish(url));
+
+      authWin.on('closed', () => {
+        if (!resolved) {
+          resolved = true;
+          resolve({ ok: false, accountId, closedByUser: true });
+        }
+      });
+    });
   });
 
   // Renderer'dan gelen yeni mesaj bildirimi

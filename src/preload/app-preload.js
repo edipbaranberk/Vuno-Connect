@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('vuno', {
   setBadge: (count, dataUrl) => ipcRenderer.send('badge', count, dataUrl),
   quit: () => ipcRenderer.send('app:quit'),
   clearSession: (partition) => ipcRenderer.invoke('session:clear', partition),
+  openAuthWindow: (data) => ipcRenderer.invoke('vuno:open-auth-window', data),
 
   onReply: listen('vuno:reply'),
   onOpenNotification: listen('vuno:open-notification'),

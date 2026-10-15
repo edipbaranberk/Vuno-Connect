@@ -321,6 +321,7 @@
               entry.wv.loadURL('https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/');
             }
           } catch (_) {}
+          checkGoogleAuthBanner(acc, entry);
         }
       }
       webviews.get(id)?.wrap.classList.add('active');
@@ -336,6 +337,61 @@
     persistAccounts();
   }
 
+  /* ----------------------------- Google İzole Giriş Penceresi ----------------------------- */
+
+  async function startGoogleAuth(acc) {
+    const entry = webviews.get(acc.id);
+    toast(`${acc.name} için Google güvenli giriş penceresi açılıyor...`);
+    try {
+      const res = await window.vuno.openAuthWindow({
+        accountId: acc.id,
+        service: acc.service,
+        name: acc.name
+      });
+      if (res && res.ok) {
+        toast(`🎉 ${acc.name} oturumu başarıyla açıldı! Gmail yükleniyor...`);
+        if (entry?.authBanner) { entry.authBanner.remove(); entry.authBanner = null; }
+        if (entry?.wv) {
+          entry.wv.loadURL('https://mail.google.com/mail/u/0/');
+        }
+      } else if (res && res.closedByUser) {
+        toast('Giriş penceresi kapatıldı.');
+      }
+    } catch (_) {
+      toast('Giriş penceresi açılırken bir sorun oluştu.');
+    }
+  }
+
+  function checkGoogleAuthBanner(acc, entry, url) {
+    if (acc.service !== 'gmail' || !entry) return;
+    const cur = url || (entry.wv ? entry.wv.getURL() : '');
+    const isAuthPage = cur && (cur.includes('accounts.google.com') || cur.includes('/signin/') || cur.includes('rejected') || cur.includes('denied'));
+    const isLoggedIn = cur && cur.includes('mail.google.com/mail') && !cur.includes('accounts.google.com');
+
+    if (isLoggedIn) {
+      if (entry.authBanner) { entry.authBanner.remove(); entry.authBanner = null; }
+      return;
+    }
+
+    if (isAuthPage && !entry.authBanner) {
+      const b = document.createElement('div');
+      b.className = 'gmail-auth-banner';
+      b.innerHTML = `
+        <div class="banner-icon">🔑</div>
+        <div class="banner-text">
+          <span class="banner-title">Google Güvenli Giriş Gerekli</span>
+          <span class="banner-sub">Google gömülü ekranda oturum açmayı engelleyebilir. İzole giriş penceresiyle oturumunu açabilirsin.</span>
+        </div>
+        <button class="btn-auth">Google ile Giriş Yap</button>
+        <button class="btn-close-banner" title="Kapat">×</button>
+      `;
+      b.querySelector('.btn-auth').addEventListener('click', () => startGoogleAuth(acc));
+      b.querySelector('.btn-close-banner').addEventListener('click', () => { b.remove(); entry.authBanner = null; });
+      entry.wrap.appendChild(b);
+      entry.authBanner = b;
+    }
+  }
+
   /* ----------------------------- Webview Yönetimi ----------------------------- */
 
   function bindWebviewEvents(acc, entry) {
@@ -343,23 +399,25 @@
     wv.addEventListener('dom-ready', () => {
       entry.ready = true;
       applySettingsToUi();
+      checkGoogleAuthBanner(acc, entry);
     });
     wv.addEventListener('did-start-loading', () => { entry.loading = true; renderSidebar(); });
-    wv.addEventListener('did-stop-loading', () => { entry.loading = false; renderSidebar(); hideError(entry); });
+    wv.addEventListener('did-stop-loading', () => {
+      entry.loading = false;
+      renderSidebar();
+      hideError(entry);
+      checkGoogleAuthBanner(acc, entry);
+    });
     wv.addEventListener('did-fail-load', (e) => {
       if (e.errorCode === -3 || !e.isMainFrame) return;
       showError(entry, acc, e.errorDescription);
     });
 
-    // Google oturum açma sayfasında reddedilme veya hata durumunda otomatik toparlanma
     wv.addEventListener('did-navigate', (e) => {
-      if (acc.service === 'gmail' && e.url && (e.url.includes('/signin/rejected') || e.url.includes('/signin/denied'))) {
-        setTimeout(() => {
-          try {
-            wv.loadURL('https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/u/0/');
-          } catch (_) {}
-        }, 1200);
-      }
+      checkGoogleAuthBanner(acc, entry, e.url);
+    });
+    wv.addEventListener('did-navigate-in-page', (e) => {
+      checkGoogleAuthBanner(acc, entry, e.url);
     });
 
     wv.addEventListener('page-title-updated', (e) => {
@@ -1162,6 +1220,7 @@
     const idx = state.accounts.indexOf(acc);
     menu.innerHTML = `
       <div class="cm-head">${escapeHtml(svc.name)} • ${escapeHtml(acc.name)} (${acc.workspace === 'work' ? 'İş' : 'Kişisel'})</div>
+      ${acc.service === 'gmail' ? '<button data-act="open-auth"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>🔑 Google Giriş Penceresi Aç</button>' : ''}
       <button data-act="reload"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>Yeniden yükle</button>
       <button data-act="reset-url"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5"/></svg>Giriş sayfasına dön</button>
       <button data-act="toggle-ws"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Grubu Değiştir: ${acc.workspace === 'work' ? 'Kişisel Yap' : 'İş Yap'}</button>
@@ -1180,6 +1239,9 @@
       menu.hidden = true;
       const act = b.dataset.act;
       const entry = webviews.get(acc.id);
+      if (act === 'open-auth') {
+        startGoogleAuth(acc);
+      }
       if (act === 'reload') entry ? entry.wv.reload() : activate(acc.id);
       if (act === 'reset-url') {
         const target = svc.url;
