@@ -180,7 +180,6 @@
       const isHib = !!(state.settings.ramSaver && webviews.get(acc.id)?.hibernating);
       btn.classList.toggle('hibernating', isHib);
       btn.dataset.tip = `${svc.name} • ${acc.name}${isHib ? ' (Uykuda 💤)' : ''}`;
-      btn.setAttribute('title', `${svc.name} — ${acc.name}`);
       btn.id = `acc-${acc.id}`;
       btn.classList.toggle('active', state.activeId === acc.id);
       btn.classList.toggle('muted-acc', !!acc.muted);
