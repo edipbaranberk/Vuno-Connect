@@ -1,4 +1,4 @@
-/* ===================== Vuno Messenger — Arayüz mantığı ===================== */
+/* ===================== Vuno Connect — Arayüz mantığı ===================== */
 (() => {
   'use strict';
 
@@ -14,6 +14,7 @@
     unread: {},            // accountId -> sayı
     inbox: [],             // gelen mesajlar
     filter: 'all',
+    unreadOnly: false,     // 'sadece okunmamış' filtresi
     locked: false,
     windowFocused: true,
     snoozed: new Map(),    // item.key -> setTimeout timer
@@ -218,7 +219,7 @@
     for (const acc of state.accounts) if (!acc.muted) total += state.unread[acc.id] || 0;
     if (total === 0) total = inboxUnread;
     window.vuno.setBadge(total, total ? badgeDataUrl(total) : null);
-    document.title = total ? `(${total}) Vuno Messenger` : 'Vuno Messenger';
+    document.title = total ? `(${total}) Vuno Connect` : 'Vuno Connect';
   }
 
   function badgeDataUrl(count) {
@@ -268,7 +269,17 @@
     renderSidebar();
   }
 
-  const CLEAN_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+  let CHROME_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+
+  function chromelessUa(full) {
+    return full.replace(/Chrome\/[\d.]+/, 'Chrome');
+  }
+
+  function userAgentForService(acc, url) {
+    const target = url || window.getService(acc.service)?.url || '';
+    if (/accounts\.google\.com/i.test(target)) return chromelessUa(CHROME_USER_AGENT);
+    return CHROME_USER_AGENT;
+  }
 
   function wakeAccount(acc) {
     const entry = webviews.get(acc.id);
@@ -284,8 +295,8 @@
         entry.wv = document.createElement('webview');
         entry.wv.setAttribute('partition', `persist:vuno-${acc.id}`);
         entry.wv.setAttribute('src', svc.url);
-        entry.wv.setAttribute('useragent', CLEAN_USER_AGENT);
-        entry.wv.setAttribute('webpreferences', 'spellcheck=yes');
+        entry.wv.setAttribute('useragent', userAgentForService(acc));
+        entry.wv.setAttribute('webpreferences', 'spellcheck=yes,backgroundThrottling=no');
         entry.wrap.appendChild(entry.wv);
         entry.ready = false;
         entry.loading = true;
@@ -359,6 +370,25 @@
     wv.addEventListener('page-title-updated', (e) => {
       const m = /\((\d+)\)/.exec(e.title) || /^(\d+)\s/.exec(e.title);
       const count = m ? parseInt(m[1], 10) : 0;
+      const prev = state.unread[acc.id] || 0;
+
+      // Yedek bildirim: servis sayfası Notification API'sini çağırmadıysa (ör. Facebook/Messenger
+      // hesap ayarında web bildirimleri kapalıysa) sekme başlığındaki okunmamış sayı artışından
+      // sentetik bildirim üret — böylece birleşik gelen kutusu ve Windows bildirimi kaçmaz.
+      // NOT: Başlıkta gönderen adı yazamaz (sekme başlığı sadece sayı verir); servis adı kullanılır,
+      // hesap adı açıklamaya konur — kendi adınızı gönderen gibi görmeyesiniz.
+      if (count > prev && count > 0 && acc.service !== 'gmail') {
+        const recentRealNotif = entry.lastNotif && (Date.now() - entry.lastNotif.at < 15000);
+        if (!recentRealNotif) {
+          handleIncoming(acc, {
+            id: 'title-fallback-' + Date.now(),
+            title: '',
+            body: `${acc.name} hesabında ${count} okunmamış mesaj`,
+            icon: ''
+          });
+        }
+      }
+
       if (state.unread[acc.id] !== count) {
         state.unread[acc.id] = count;
         renderSidebar();
@@ -381,8 +411,10 @@
     const wv = document.createElement('webview');
     wv.setAttribute('partition', `persist:vuno-${acc.id}`);
     wv.setAttribute('src', svc.url);
-    wv.setAttribute('useragent', CLEAN_USER_AGENT);
-    wv.setAttribute('webpreferences', 'spellcheck=yes');
+    wv.setAttribute('useragent', userAgentForService(acc, svc.url));
+    // backgroundThrottling=no: arka plandaki sekmeler kısalmasın; Messenger/WhatsApp gibi
+    // servisler bildirimleri zamanlayıcılarla planlıyor, kısalma mesaj/bildirim kaçırıyor.
+    wv.setAttribute('webpreferences', 'spellcheck=yes,backgroundThrottling=no');
     wrap.appendChild(wv);
     $('#webviews').appendChild(wrap);
 
@@ -490,6 +522,7 @@
     }
     state.inbox.unshift(item);
     if (state.inbox.length > 200) state.inbox.length = 200;
+    persistInbox();
 
     if (state.activeId === 'inbox') renderInbox();
     updateBadges();
@@ -599,6 +632,14 @@
     }
   }
 
+  /* ----------------------------- Gelen kutusu kalıcılığı ----------------------------- */
+  // Son 30 mesaj diske yazılır; uygulama kapansa bile birleşik kutu korunur.
+  function persistInbox() {
+    try { window.vuno.saveInbox(state.inbox.slice(0, 30)); } catch (_) {}
+  }
+  setInterval(persistInbox, 15000);
+  window.addEventListener('beforeunload', persistInbox);
+
   /* ----------------------------- Erteleme (Snooze) ----------------------------- */
 
   let snoozeTargetItem = null;
@@ -621,7 +662,10 @@
     toast(`Mesaj ${mins >= 60 ? (mins / 60) + ' saat' : mins + ' dakika'} sonrasına ertelendi 🕒`);
 
     // Süre dolunca tekrar en başa ekle ve bildirim patlat
-    setTimeout(() => {
+    // (Kullanıcı bu arada kartı Kapat'a basarsa timer iptal edilir — state.snoozed)
+    const snoozeTimer = setTimeout(() => {
+      state.snoozed.delete(item.key);
+      if (item.__dismissed) return; // kapatılmış, tekrar gösterme
       item.time = Date.now();
       item.read = false;
       state.inbox.unshift(item);
@@ -645,6 +689,7 @@
         });
       }
     }, mins * 60 * 1000);
+    state.snoozed.set(item.key, snoozeTimer);
   }));
 
   /* ----------------------------- Birleşik Gelen Kutusu ----------------------------- */
@@ -680,16 +725,20 @@
     const focusedKey = document.activeElement?.classList.contains('reply-input') ? document.activeElement.dataset.key : null;
 
     const accIds = new Set(visibleAccounts().map((a) => a.id));
-    const items = state.inbox.filter((m) => accIds.has(m.accountId) && (state.filter === 'all' || m.accountId === state.filter));
+    const items = state.inbox.filter((m) => accIds.has(m.accountId)
+      && (state.filter === 'all' || m.accountId === state.filter)
+      && (!state.unreadOnly || !m.read));
     list.innerHTML = '';
 
     const empty = $('#empty-state');
     const noAccounts = state.accounts.length === 0;
     empty.hidden = items.length > 0;
-    $('#empty-title').textContent = noAccounts ? 'Vuno Messenger\'a hoş geldin 👋' : 'Henüz mesaj yok';
+    $('#empty-title').textContent = noAccounts ? 'Vuno Connect\'a hoş geldin 👋' : (state.unreadOnly ? 'Okunmamış mesaj yok 🎉' : 'Henüz mesaj yok');
     $('#empty-text').textContent = noAccounts
       ? 'Başlamak için bir servis ekle. Giriş yaptıktan sonra gelen tüm mesajlar burada toplanır ve tek yerden cevaplayabilirsin.'
-      : 'Yeni mesajlar geldiğinde burada görünecek. Servislerin arka planda açık kalması yeterli — buradan veya bildirim kartından cevap verebilirsin.';
+      : (state.unreadOnly
+        ? 'Yeni mesaj geldiğinde burada belirecek. Tüm mesajları görmek için "Sadece okunmamış" filtresini kaldır.'
+        : 'Yeni mesajlar geldiğinde burada görünecek. Servislerin arka planda açık kalması yeterli — buradan veya bildirim kartından cevap verebilirsin.');
     renderWelcomeGrid(noAccounts);
     $('#inbox-subtitle').textContent = state.inbox.length
       ? `${state.inbox.filter((m) => !m.read && accIds.has(m.accountId)).length} okunmamış • ${visibleAccounts().length} hesap bağlı`
@@ -757,6 +806,7 @@
           <button class="mini-btn" data-open title="Doğrudan bu sohbete gir"><svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/></svg>Aç</button>
           <button class="mini-btn" data-snooze><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Ertele</button>
           ${item.read ? '' : '<button class="mini-btn" data-read><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Okundu</button>'}
+          <button class="mini-btn" data-dismiss title="Kapat — aynı kişiden yeni mesaj gelirse kart yeniden görünür"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>Kapat</button>
         </div>`;
 
       const input = $('.reply-input', card);
@@ -841,6 +891,22 @@
       // Erteleme butonu
       $('[data-snooze]', card)?.addEventListener('click', () => openSnoozeModal(item));
 
+      // Kapat (X) butonu — kartı listeden kaldır; ertelenmişse zamanlayıcıyı iptal et.
+      // Aynı kişiden YENİ mesaj gelirse handleIncoming yeni kart oluşturur, yani tekrar görünür.
+      $('[data-dismiss]', card)?.addEventListener('click', () => {
+        item.__dismissed = true;
+        const pendingTimer = state.snoozed.get(item.key);
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          state.snoozed.delete(item.key);
+        }
+        const idx = state.inbox.indexOf(item);
+        if (idx !== -1) state.inbox.splice(idx, 1);
+        persistInbox();
+        renderInbox();
+        updateBadges();
+      });
+
       $('form', card).addEventListener('submit', async (e) => {
         e.preventDefault();
         const text = input.value.trim();
@@ -852,7 +918,7 @@
         await replyToItem(item, text);
       });
       $$('[data-open]', card).forEach((el) => el.addEventListener('click', () => openItem(item.accountId, item.notifId)));
-      $('[data-read]', card)?.addEventListener('click', () => { item.read = true; renderInbox(); updateBadges(); });
+      $('[data-read]', card)?.addEventListener('click', () => { item.read = true; persistInbox(); renderInbox(); updateBadges(); });
       list.appendChild(card);
     }
     if (focusedKey) document.getElementById(`reply-${focusedKey}`)?.focus();
@@ -1391,8 +1457,15 @@
   });
   $('#btn-theme').addEventListener('click', () => saveSettings({ theme: resolvedTheme() === 'dark' ? 'light' : 'dark' }));
   $('#btn-lock').addEventListener('click', lock);
-  $('#btn-mark-all').addEventListener('click', () => { state.inbox.forEach((m) => { m.read = true; }); renderInbox(); updateBadges(); });
-  $('#btn-clear-inbox').addEventListener('click', () => { state.inbox = []; renderInbox(); updateBadges(); });
+  $('#btn-mark-all').addEventListener('click', () => { state.inbox.forEach((m) => { m.read = true; }); persistInbox(); renderInbox(); updateBadges(); });
+  $('#btn-clear-inbox').addEventListener('click', () => { state.inbox = []; persistInbox(); renderInbox(); updateBadges(); });
+
+  // 'Sadece okunmamış' filtresi
+  $('#btn-unread-only').addEventListener('click', () => {
+    state.unreadOnly = !state.unreadOnly;
+    $('#btn-unread-only').classList.toggle('active', state.unreadOnly);
+    renderInbox();
+  });
 
   $$('[data-close]').forEach((b) => b.addEventListener('click', () => { $(`#${b.dataset.close}`).hidden = true; }));
   $$('.modal-backdrop').forEach((m) => m.addEventListener('mousedown', (e) => { if (e.target === m) m.hidden = true; }));
@@ -1511,6 +1584,9 @@
   /* ----------------------------- Başlat ----------------------------- */
 
   async function init() {
+    try {
+      CHROME_USER_AGENT = await window.vuno.getUserAgent() || CHROME_USER_AGENT;
+    } catch (_) {}
     const data = await window.vuno.getStore();
     state.accounts = data.accounts || [];
     state.settings = data.settings || {};
@@ -1520,6 +1596,7 @@
       { id: 't3', title: 'İnceliyorum', text: 'Mesajınızı aldım, inceliyorum. En kısa sürede yazacağım.' }
     ];
     state.activeWorkspace = data.activeWorkspace || 'all';
+    state.inbox = Array.isArray(data.inbox) ? data.inbox.slice(0, 30) : []; // kayıtlı gelen kutusunu geri yükle
     $$('.ws-btn').forEach((b) => b.classList.toggle('active', b.dataset.ws === state.activeWorkspace));
 
     buildKeypad();
@@ -1537,6 +1614,63 @@
 
     if (state.settings.lock?.enabled) lock();
   }
+
+  /* ── Oto-güncelleme UI ────────────────────────────────────── */
+  const updateStatusEl = $('#update-status');
+  const updateProgressEl = $('#update-progress');
+  const updateProgressBarEl = $('#update-progress-bar');
+  const btnCheckUpdate = $('#btn-check-update');
+
+  function setUpdateStatus(text) { if (updateStatusEl) updateStatusEl.textContent = text; }
+
+  window.vuno.onUpdateStatus((u) => {
+    if (u.type === 'available') {
+      setUpdateStatus(`Yeni sürüm v${u.version} mevcut! Yüklemek için "Şimdi Güncelle"ye bas.`);
+      btnCheckUpdate.textContent = 'Şimdi Güncelle';
+      btnCheckUpdate.dataset.install = '1';
+      toast(`Vuno Connect v${u.version} çıktı 🎉`, 'success');
+    } else if (u.type === 'downloading') {
+      updateProgressEl.hidden = false;
+      updateProgressBarEl.style.width = `${u.percent || 0}%`;
+      setUpdateStatus(`İndiriliyor… %${u.percent || 0}`);
+    } else if (u.type === 'verifying') {
+      setUpdateStatus('Doğrulanıyor…');
+    } else if (u.type === 'installing') {
+      updateProgressEl.hidden = false;
+      updateProgressBarEl.style.width = '100%';
+      setUpdateStatus('Kuruluyor… Uygulama birkaç saniye içinde yeniden başlayacak.');
+    } else if (u.type === 'error') {
+      updateProgressEl.hidden = true;
+      setUpdateStatus(`Güncelleme hatası: ${u.message}`);
+      toast('Güncelleme indirilemedi', 'error');
+    }
+  });
+
+  btnCheckUpdate?.addEventListener('click', async () => {
+    if (btnCheckUpdate.dataset.install) {
+      btnCheckUpdate.disabled = true;
+      await window.vuno.installUpdate();
+      return;
+    }
+    btnCheckUpdate.disabled = true;
+    btnCheckUpdate.textContent = 'Kontrol ediliyor…';
+    const r = await window.vuno.checkForUpdates();
+    btnCheckUpdate.disabled = false;
+    if (r.error) { setUpdateStatus(`Kontrol başarısız: ${r.error}`); return; }
+    if (r.available) {
+      setUpdateStatus(`Yeni sürüm v${r.remote} mevcut!`);
+      btnCheckUpdate.textContent = 'Şimdi Güncelle';
+      btnCheckUpdate.dataset.install = '1';
+    } else {
+      setUpdateStatus('Son sürümü kullanıyorsun ✨');
+      btnCheckUpdate.textContent = 'Kontrol Et';
+    }
+  });
+
+  window.vuno.getLocalVersion().then((v) => {
+    const el = $('#about-version');
+    if (el && v) el.textContent = `v${v}`;
+  }).catch(() => {});
 
   init();
 })();

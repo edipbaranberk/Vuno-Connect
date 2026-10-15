@@ -7,6 +7,7 @@ const DEFAULTS = {
   accounts: [],
   activeAccountId: null,
   activeWorkspace: 'all', // 'all', 'personal', 'work'
+  inbox: [],             // kalıcı gelen kutusu (son 30 mesaj)
   templates: [
     { id: 't1', title: 'Tamamdır', text: 'Tamamdır, anlaştık! 👍' },
     { id: 't2', title: 'Toplantıdayım', text: 'Şu an toplantıdayım, bitince dönüş yapacağım. ⏳' },
@@ -27,6 +28,7 @@ const DEFAULTS = {
     ramSaver: false, // RAM tasarruf modu (arkaplanda mesajların anlık gelmesi ve hızlı cevaplar için varsayılan KAPALI)
     ramSaverMinutes: 30,
     lock: { enabled: false, hash: null, salt: null, autoLockMinutes: 0 },
+    autoUpdate: false, // Yeni sürüm bulununca sormadan indirip kur
     aiKey: '' // İsteğe bağlı Gemini / OpenAI API anahtarı
   },
   window: { width: 1360, height: 860, x: undefined, y: undefined, maximized: false }

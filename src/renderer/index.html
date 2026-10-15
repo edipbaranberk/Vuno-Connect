@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' data:;" />
-  <meta name="description" content="Vuno Messenger — WhatsApp, Instagram, Messenger, Telegram ve daha fazlası tek uygulamada." />
-  <title>Vuno Messenger</title>
+  <meta name="description" content="Vuno Connect — WhatsApp, Instagram, Messenger, Telegram ve daha fazlası tek uygulamada." />
+  <title>Vuno Connect</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" />
   <link rel="stylesheet" href="styles.css" />
@@ -85,6 +85,9 @@
             <p class="muted" id="inbox-subtitle">Tüm servislerden gelen mesajlar tek yerde.</p>
           </div>
           <div class="inbox-actions">
+            <button class="btn ghost" id="btn-unread-only" title="Sadece okunmamış mesajları göster">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Sadece okunmamış
+            </button>
             <button class="btn ghost" id="btn-mark-all">
               <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> Tümünü okundu say
             </button>
@@ -384,10 +387,21 @@
             <div class="about">
               <img src="../../assets/icon.png" alt="Vuno" />
               <div>
-                <h3>Vuno Messenger <span class="muted">v1.0.0</span></h3>
+                <h3>Vuno Connect <span class="muted" id="about-version">v?</span></h3>
                 <p class="muted">Tüm mesajların, tek uygulamada. Hesap bilgilerin yalnızca bu bilgisayarda, her hesap için ayrı ve izole oturumlarda saklanır. Vuno hiçbir sunucuya veri göndermez.</p>
               </div>
             </div>
+            <div class="setting">
+              <div><b>Güncellemeler</b><span id="update-status">Son sürümü kullanıyorsun ✨</span></div>
+              <button class="btn ghost" id="btn-check-update">Kontrol Et</button>
+            </div>
+            <div class="update-progress" id="update-progress" hidden>
+              <div class="update-progress-bar" id="update-progress-bar" style="width:0%"></div>
+            </div>
+            <label class="setting">
+              <div><b>Otomatik güncelle</b><span>Yeni sürüm bulununca sormadan indirip kur</span></div>
+              <input type="checkbox" class="switch" data-setting="autoUpdate" />
+            </label>
           </div>
         </div>
       </div>

@@ -1,16 +1,23 @@
 @echo off
-title Vuno Messenger
+chcp 65001 >nul 2>&1
+title Vuno Connect
 cd /d "%~dp0"
 
-tasklist /fi "imagename eq electron.exe" 2>NUL | find /i "electron.exe" >NUL
-if "%ERRORLEVEL%"=="0" (
-    taskkill /f /im electron.exe >NUL 2>&1
-    ping 127.0.0.1 -n 2 >NUL
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo [HATA] Electron bulunamadi.
+  echo Once bu klasorde: npm install
+  pause
+  exit /b 1
 )
 
-if exist "node_modules\.bin\electron.cmd" (
-    start "" "node_modules\.bin\electron.cmd" .
-) else (
-    start "" npm start
+REM Konsoldaki "crashpad ... not connected" satiri cogu zaman zararsiz bir Chromium uyarisi.
+REM Pencere acilmiyorsa asagidaki satirdan sonra cikis kodu gorunur.
+call "node_modules\.bin\electron.cmd" .
+set ERR=%ERRORLEVEL%
+
+if not "%ERR%"=="0" (
+  echo.
+  echo Uygulama kapandi ^(cikis kodu: %ERR%^).
+  echo Zaten calisiyorsa sistem tepsisinde ^(sag alt^) Vuno simgesine bakin.
+  pause
 )
-exit

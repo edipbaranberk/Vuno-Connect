@@ -8,6 +8,8 @@ const listen = (channel) => (cb) => {
 };
 
 contextBridge.exposeInMainWorld('vuno', {
+  getUserAgent: () => ipcRenderer.invoke('app:userAgent'),
+  getChromelessUserAgent: () => ipcRenderer.invoke('app:chromelessUserAgent'),
   getStore: () => ipcRenderer.invoke('store:get'),
   saveAccounts: (accounts, activeId) => ipcRenderer.invoke('accounts:save', accounts, activeId),
   saveTemplates: (templates) => ipcRenderer.invoke('templates:save', templates),
@@ -24,11 +26,16 @@ contextBridge.exposeInMainWorld('vuno', {
   quit: () => ipcRenderer.send('app:quit'),
   clearSession: (partition) => ipcRenderer.invoke('session:clear', partition),
   clearGoogleCookies: (partition) => ipcRenderer.invoke('session:clear-google-cookies', partition),
+  saveInbox: (items) => ipcRenderer.invoke('inbox:save', items),
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  getLocalVersion: () => ipcRenderer.invoke('update:get-local-version'),
 
   onReply: listen('vuno:reply'),
   onOpenNotification: listen('vuno:open-notification'),
   onLock: listen('vuno:lock'),
   onPlaySound: listen('vuno:play-sound'),
   onSettingsChanged: listen('vuno:settings-changed'),
-  onWindowFocus: listen('vuno:window-focus')
+  onWindowFocus: listen('vuno:window-focus'),
+  onUpdateStatus: listen('vuno:update-status')
 });

@@ -1,7 +1,7 @@
-# Vuno Messenger
+# Vuno Connect
 
 <p align="center">
-  <img src="assets/icon.png" alt="Vuno Messenger Logo" width="96" height="96" />
+  <img src="assets/icon.png" alt="Vuno Connect Logo" width="96" height="96" />
 </p>
 
 <p align="center">
@@ -63,10 +63,10 @@
 
 ```bash
 # Projeyi klonlayın
-git clone https://github.com/edipbaranberk/Vuno-Messenger.git
+git clone https://github.com/edipbaranberk/Vuno-Connect.git
 
 # Proje dizinine geçin
-cd Vuno-Messenger
+cd Vuno-Connect
 
 # Bağımlılıkları yükleyin
 npm install
@@ -99,7 +99,7 @@ npm run dist
 ## 📂 Proje Mimarisi
 
 ```
-Vuno-Messenger/
+Vuno-Connect/
 ├── assets/                  # Uygulama ikonları ve görsel varlıklar
 ├── src/
 │   ├── main/

@@ -1,6 +1,6 @@
 {
-  "name": "vuno-messenger",
-  "productName": "Vuno Messenger",
+  "name": "vuno-connect",
+  "productName": "Vuno Connect",
   "version": "1.0.0",
   "description": "WhatsApp, Instagram, Messenger, Telegram ve daha fazlasını tek uygulamada yönetin.",
   "main": "src/main/main.js",
@@ -11,8 +11,9 @@
     "dist": "electron-builder --win"
   },
   "build": {
-    "appId": "com.vuno.messenger",
-    "productName": "Vuno Messenger",
+    "appId": "com.vuno.connect",
+    "productName": "Vuno Connect",
+    "artifactName": "Vuno-Connect-Setup-${version}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -25,14 +26,14 @@
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Vuno Messenger"
+      "shortcutName": "Vuno Connect"
     }
   },
   "devDependencies": {

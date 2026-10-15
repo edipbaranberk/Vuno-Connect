@@ -1,15 +1,26 @@
-// Vuno Messenger - Ana süreç (main process)
-const {
-  app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, shell, session,
-  screen, powerMonitor, nativeTheme, Notification
-} = require('electron');
+// Vuno Connect - Ana süreç (main process) — orkestratör
+// Detaylı modüller: windows.js, tray.js, security.js, ai.js, ipc.js, logger.js, userAgent.js, store.js
+const { app, ipcMain, powerMonitor, nativeTheme } = require('electron');
 const path = require('path');
 const crypto = require('crypto');
 const Store = require('./store');
+const { logToFile, attachConsoleHooks } = require('./logger');
+const {
+  buildChromeUserAgent,
+  chromelessUserAgent,
+  isGoogleAccountsUrl
+} = require('./userAgent');
 
-// Servislerin ve Google'ın güvenli tarayıcı olarak tanıması için saf Chrome UA
-const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-const USER_AGENT = CHROME_UA;
+// Modüller
+const createWindowsModule = require('./windows');
+const createTrayModule = require('./tray');
+const createSecurityModule = require('./security');
+const createAiModule = require('./ai');
+const createIpcModule = require('./ipc');
+const createUpdaterModule = require('./updater');
+
+// Electron Chromium sürümüyle eşleşen UA (sabit sürüm spoof'u Google tarafından reddediliyordu)
+const CHROME_UA = buildChromeUserAgent();
 app.userAgentFallback = CHROME_UA;
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -17,17 +28,20 @@ const ICON_PATH = path.join(ROOT, 'assets', 'icon.png');
 const TRAY_PATH = path.join(ROOT, 'assets', 'tray.png');
 const WEBVIEW_PRELOAD = path.join(__dirname, '..', 'preload', 'webview-preload.js');
 
+attachConsoleHooks();
+
 let store;
 let mainWindow = null;
 let popupWindow = null;
 let tray = null;
 let isQuitting = false;
 let totalUnread = 0;
-let popupQueue = [];
 let idleTimer = null;
 
-app.setAppUserModelId('com.vuno.messenger');
+app.setAppUserModelId('com.vuno.connect');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+// Windows konsolunda "crashpad ... not connected" uyarisi (çoğu zaman zararsiz)
+app.commandLine.appendSwitch('disable-breakpad');
 if (process.env.VUNO_SMOKE_USERDATA) app.setPath('userData', process.env.VUNO_SMOKE_USERDATA);
 
 // Tek örnek kilidi: ikinci kez açılırsa mevcut pencereyi öne getir, yenisini anında kapat
@@ -43,7 +57,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
-/* ----------------------------- Yardımcılar ----------------------------- */
+/* ----------------------------- Paylaşılan yardımcılar ----------------------------- */
 
 function settings() {
   return store.get('settings');
@@ -75,17 +89,6 @@ function themeColors() {
     : { color: '#f4f4fa', symbolColor: '#3a3a55', bg: '#f4f4fa' };
 }
 
-function sendToMain(channel, payload) {
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
-}
-
-function showMainWindow() {
-  if (!mainWindow) return;
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
-}
-
 function applyLoginItem() {
   const s = settings();
   if (!app.isPackaged) return; // Geliştirme modunda electron.exe'yi başlangıca eklemeyelim
@@ -94,184 +97,6 @@ function applyLoginItem() {
     args: ['--hidden']
   });
 }
-
-/* ----------------------------- Ana pencere ----------------------------- */
-
-function createMainWindow() {
-  const w = store.get('window');
-  const colors = themeColors();
-  const startHidden = process.argv.includes('--hidden') || settings().startMinimized;
-
-  mainWindow = new BrowserWindow({
-    width: w.width,
-    height: w.height,
-    x: w.x,
-    y: w.y,
-    minWidth: 900,
-    minHeight: 600,
-    show: true,
-    title: 'Vuno Messenger',
-    icon: ICON_PATH,
-    backgroundColor: colors.bg,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, '..', 'preload', 'app-preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      webviewTag: true,
-      spellcheck: true
-    }
-  });
-
-  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
-
-  mainWindow.once('ready-to-show', () => {
-    if (w.maximized) mainWindow.maximize();
-    if (!startHidden) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
-
-  // Windows'ta bazen ready-to-show geç tetiklenebilir veya arka planda kalabilir
-  if (!startHidden) {
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    }, 500);
-  }
-
-  const saveBounds = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    const maximized = mainWindow.isMaximized();
-    const b = maximized ? store.get('window') : mainWindow.getBounds();
-    store.set('window', { ...b, maximized });
-  };
-  mainWindow.on('resize', saveBounds);
-  mainWindow.on('move', saveBounds);
-
-  mainWindow.on('close', (e) => {
-    if (!isQuitting && settings().closeToTray) {
-      e.preventDefault();
-      mainWindow.hide();
-    }
-  });
-
-  mainWindow.on('focus', () => sendToMain('vuno:window-focus', true));
-  mainWindow.on('blur', () => sendToMain('vuno:window-focus', false));
-}
-
-/* ----------------------------- Bildirim pop-up ----------------------------- */
-
-function createPopupWindow() {
-  popupWindow = new BrowserWindow({
-    width: 400,
-    height: 10,
-    show: false,
-    frame: false,
-    transparent: true,
-    resizable: false,
-    movable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    focusable: true,
-    hasShadow: false,
-    webPreferences: {
-      preload: path.join(__dirname, '..', 'preload', 'popup-preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-  popupWindow.setAlwaysOnTop(true, 'screen-saver');
-  popupWindow.loadFile(path.join(__dirname, '..', 'popup', 'popup.html'));
-  popupWindow.webContents.once('did-finish-load', () => {
-    popupWindow.webContents.send('popup:theme', settings().theme);
-    for (const n of popupQueue) popupWindow.webContents.send('popup:add', n);
-    popupQueue = [];
-  });
-  popupWindow.on('closed', () => { popupWindow = null; });
-}
-
-function pushPopup(n) {
-  if (!popupWindow) createPopupWindow();
-  if (popupWindow.webContents.isLoading()) {
-    popupQueue.push(n);
-  } else {
-    popupWindow.webContents.send('popup:add', n);
-  }
-}
-
-function resizePopup(height) {
-  if (!popupWindow) return;
-  if (height <= 0) {
-    popupWindow.hide();
-    return;
-  }
-  const { workArea } = screen.getPrimaryDisplay();
-  const width = 400;
-  const h = Math.min(Math.ceil(height), workArea.height - 20);
-  popupWindow.setBounds({
-    x: workArea.x + workArea.width - width - 8,
-    y: workArea.y + workArea.height - h - 8,
-    width,
-    height: h
-  });
-  if (!popupWindow.isVisible()) popupWindow.showInactive();
-}
-
-/* ----------------------------- Sistem tepsisi ----------------------------- */
-
-function buildTrayMenu() {
-  const s = settings();
-  return Menu.buildFromTemplate([
-    { label: 'Vuno Messenger\'ı Aç', click: showMainWindow },
-    { type: 'separator' },
-    {
-      label: 'Rahatsız Etme',
-      type: 'checkbox',
-      checked: !!s.dnd,
-      click: (item) => {
-        s.dnd = item.checked;
-        store.save();
-        sendToMain('vuno:settings-changed', s);
-        updateTray();
-      }
-    },
-    {
-      label: 'Uygulamayı Kilitle',
-      enabled: !!(s.lock && s.lock.enabled),
-      click: () => sendToMain('vuno:lock')
-    },
-    { type: 'separator' },
-    {
-      label: 'Çıkış',
-      click: () => { isQuitting = true; app.quit(); }
-    }
-  ]);
-}
-
-function updateTray() {
-  if (!tray) return;
-  const dnd = isDndActive() ? ' • Rahatsız Etme açık' : '';
-  tray.setToolTip(totalUnread > 0
-    ? `Vuno Messenger — ${totalUnread} okunmamış mesaj${dnd}`
-    : `Vuno Messenger${dnd}`);
-  tray.setContextMenu(buildTrayMenu());
-}
-
-function createTray() {
-  const img = nativeImage.createFromPath(TRAY_PATH).resize({ width: 16, height: 16 });
-  tray = new Tray(img);
-  tray.on('click', () => {
-    if (mainWindow.isVisible() && mainWindow.isFocused()) mainWindow.hide();
-    else showMainWindow();
-  });
-  updateTray();
-}
-
-/* ----------------------------- Uygulama kilidi ----------------------------- */
 
 function hashPin(pin, salt) {
   return crypto.scryptSync(String(pin), salt, 64).toString('hex');
@@ -283,488 +108,91 @@ function startIdleWatcher() {
     const lock = settings().lock;
     if (!lock || !lock.enabled || !lock.autoLockMinutes) return;
     if (powerMonitor.getSystemIdleTime() >= lock.autoLockMinutes * 60) {
-      sendToMain('vuno:lock');
+      ctx.sendToMain('vuno:lock');
     }
   }, 20000);
 }
 
-/* ----------------------------- Webview güvenliği & CDP Enjeksiyonu ----------------------------- */
+/* ----------------------------- Modül kurulumu (ctx köprüsü) ----------------------------- */
 
-const CDP_MASK_SCRIPT = `
-  try {
-    Object.defineProperty(navigator, 'webdriver', {
-      get: () => undefined,
-      configurable: true
-    });
-    delete Object.getPrototypeOf(navigator).webdriver;
-  } catch (_) {}
+const ctx = {
+  app,
+  paths: { ROOT, ICON_PATH, TRAY_PATH, WEBVIEW_PRELOAD },
+  CHROME_UA,
+  chromelessUserAgent,
+  isGoogleAccountsUrl,
+  get store() { return store; },
+  get mainWindow() { return mainWindow; },
+  set mainWindow(v) { mainWindow = v; },
+  get popupWindow() { return popupWindow; },
+  set popupWindow(v) { popupWindow = v; },
+  get isQuitting() { return isQuitting; },
+  set isQuitting(v) { isQuitting = v; },
+  get totalUnread() { return totalUnread; },
+  set totalUnread(v) { totalUnread = v; },
+  settings, timeToMinutes, isDndActive, themeColors, hashPin, applyLoginItem
+};
 
-  try {
-    const brands = [
-      { brand: 'Google Chrome', version: '131' },
-      { brand: 'Chromium', version: '131' },
-      { brand: 'Not_A Brand', version: '24' }
-    ];
-    const fullVersionList = [
-      { brand: 'Google Chrome', version: '131.0.6778.86' },
-      { brand: 'Chromium', version: '131.0.6778.86' },
-      { brand: 'Not_A Brand', version: '24.0.0.0' }
-    ];
+const windows = createWindowsModule(ctx);
+const trayModule = createTrayModule(ctx);
+const security = createSecurityModule(ctx);
+const ai = createAiModule(ctx);
+const ipcModule = createIpcModule(ctx);
+const updater = createUpdaterModule(ctx);
 
-    const uad = {
-      brands: brands,
-      mobile: false,
-      platform: 'Windows',
-      getHighEntropyValues: async () => ({
-        architecture: 'x86',
-        bitness: '64',
-        brands: brands,
-        fullVersionList: fullVersionList,
-        mobile: false,
-        model: '',
-        platform: 'Windows',
-        platformVersion: '15.0.0',
-        uaFullVersion: '131.0.6778.86'
-      }),
-      toJSON: () => ({
-        brands: brands,
-        mobile: false,
-        platform: 'Windows'
-      })
-    };
-
-    Object.defineProperty(navigator, 'userAgentData', {
-      get: () => uad,
-      configurable: true
-    });
-  } catch (_) {}
-
-  try {
-    if (!window.chrome) {
-      window.chrome = {};
-    }
-    if (!window.chrome.app) {
-      window.chrome.app = {
-        isInstalled: false,
-        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
-        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
-      };
-    }
-  } catch (_) {}
-`;
-
-function attachCdpMask(contents) {
-  try {
-    if (!contents || contents.isDestroyed()) return;
-    if (!contents.debugger.isAttached()) {
-      contents.debugger.attach('1.3');
-    }
-    contents.debugger.sendCommand('Page.enable').catch(() => {});
-    contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', {
-      source: CDP_MASK_SCRIPT
-    }).catch(() => {});
-  } catch (_) {}
-}
-
-function setupWebContentsHandling() {
-  // Renderer'ın ekleyeceği her <webview> için güvenli ayarları zorla
-  app.on('web-contents-created', (_e, contents) => {
-    contents.on('will-attach-webview', (_ev, webPreferences, params) => {
-      delete webPreferences.preloadURL;
-      webPreferences.preload = WEBVIEW_PRELOAD;
-      webPreferences.nodeIntegration = false;
-      webPreferences.contextIsolation = true;
-      webPreferences.sandbox = false;
-      webPreferences.spellcheck = true;
-      if (!/^https:\/\//.test(params.src || '')) {
-        _ev.preventDefault();
-      }
-    });
-
-    if (contents.getType() === 'webview') {
-      contents.setUserAgent(USER_AGENT);
-
-      // Sayfa oluşurken 0. milisaniyede ve did-start-loading aşamasında debugger'ı bağla
-      attachCdpMask(contents);
-      contents.on('did-start-loading', () => attachCdpMask(contents));
-
-      // Harici bağlantıları varsayılan tarayıcıda aç (Giriş/OAuth hariç)
-      contents.setWindowOpenHandler(({ url }) => {
-        if (/accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|appleid\.apple\.com|account\.proton\.me/i.test(url)) {
-          return { action: 'allow' };
-        }
-        if (/^https?:\/\//.test(url)) shell.openExternal(url);
-        return { action: 'deny' };
-      });
-    }
-  });
-
-  // Her yeni oturum (her hesap ayrı bir "persist:" bölümü) için izinler
-  app.on('session-created', (ses) => configureSession(ses));
-  configureSession(session.defaultSession);
-}
-
-function configureSession(ses) {
-  ses.setUserAgent(CHROME_UA);
-  const allowed = new Set(['notifications', 'media', 'clipboard-read', 'clipboard-sanitized-write', 'fullscreen', 'mediaKeySystem']);
-  ses.setPermissionRequestHandler((_wc, permission, cb) => cb(allowed.has(permission)));
-  ses.setPermissionCheckHandler((_wc, permission) => allowed.has(permission));
-
-  // Giden tüm isteklerde User-Agent ve Sec-CH-UA başlıklarını gerçek Chrome 131 değerleriyle spoof et
-  ses.webRequest.onBeforeSendHeaders((details, callback) => {
-    details.requestHeaders['User-Agent'] = CHROME_UA;
-
-    // Küçük harfli varyantları temizle
-    delete details.requestHeaders['sec-ch-ua'];
-    delete details.requestHeaders['sec-ch-ua-mobile'];
-    delete details.requestHeaders['sec-ch-ua-platform'];
-    delete details.requestHeaders['sec-ch-ua-full-version-list'];
-
-    // Gerçek Chrome 131 Client Hints başlıklarıyla ez
-    details.requestHeaders['Sec-CH-UA'] = '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"';
-    details.requestHeaders['Sec-CH-UA-Mobile'] = '?0';
-    details.requestHeaders['Sec-CH-UA-Platform'] = '"Windows"';
-
-    // Electron izini temizle
-    delete details.requestHeaders['X-Electron-Version'];
-    delete details.requestHeaders['x-electron-version'];
-
-    callback({ cancel: false, requestHeaders: details.requestHeaders });
-  });
-}
-
-/* ----------------------------- IPC ----------------------------- */
-
-function setupIpc() {
-  ipcMain.handle('store:get', () => {
-    const data = JSON.parse(JSON.stringify(store.get()));
-    // Kilit hash'ini renderer'a gönderme
-    if (data.settings.lock) {
-      data.settings.lock.hash = null;
-      data.settings.lock.salt = null;
-    }
-    return data;
-  });
-
-  ipcMain.handle('accounts:save', (_e, accounts, activeAccountId) => {
-    store.set('accounts', accounts);
-    store.set('activeAccountId', activeAccountId);
-    return true;
-  });
-
-  ipcMain.handle('templates:save', (_e, templates) => {
-    store.set('templates', templates);
-    return true;
-  });
-
-  ipcMain.handle('workspace:save', (_e, ws) => {
-    store.set('activeWorkspace', ws);
-    return true;
-  });
-
-  // Gemini API çoklu model çağrıcı (3.1 Flash-Lite ve 3.8 Flash)
-  async function callGemini(apiKey, prompt, chosenModel) {
-    if (!apiKey) return null;
-    const s = settings();
-    const modelToUse = chosenModel || s.aiModel || 'gemini-3.1-flash-lite';
-    const models = [modelToUse, 'gemini-3.1-flash-lite', 'gemini-3.8-flash'].filter((v, i, a) => a.indexOf(v) === i);
-
-    for (const model of models) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '');
-          console.warn(`[Gemini] ${model} HTTP ${res.status}:`, errText);
-          continue;
-        }
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text && text.trim()) {
-          return { text: text.trim(), model };
-        }
-      } catch (err) {
-        console.warn(`[Gemini] ${model} hatası:`, err.message || err);
-      }
-    }
-    return null;
-  }
-
-  // Gemini API Anahtarı Test Etme (Doğrudan seçilen modeli test eder)
-  ipcMain.handle('gemini:test', async (_e, { apiKey, model }) => {
-    if (!apiKey || !apiKey.trim()) return { ok: false, error: 'API anahtarı boş' };
-    const key = apiKey.trim();
-    const targetModel = model || 'gemini-3.1-flash-lite';
-
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: 'Ping' }] }] })
-      });
-      if (res.ok) {
-        return { ok: true, model: targetModel };
-      }
-      const errJson = await res.json().catch(() => ({}));
-      const msg = errJson?.error?.message || `HTTP ${res.status}`;
-      return { ok: false, error: msg };
-    } catch (e) {
-      return { ok: false, error: e.message || 'Bağlantı kurulamadı' };
-    }
-  });
-
-  // Güvenli ve çoklu kaynaklı Çeviri (Gemini AI + Ücretsiz Google Translate + MyMemory)
-  ipcMain.handle('translate:text', async (_e, { text, targetLang = 'tr', sourceLang = 'auto' }) => {
-    if (!text || !text.trim()) return { text: '', provider: '', detectedLang: '' };
-    const s = settings();
-    const apiKey = s.aiKey ? s.aiKey.trim() : '';
-    const engine = s.translationEngine || (apiKey ? 'gemini' : 'google-free');
-
-    const langNames = {
-      tr: 'Turkish', pl: 'Polish', en: 'English', de: 'German',
-      fr: 'French', es: 'Spanish', it: 'Italian', ru: 'Russian', ar: 'Arabic'
-    };
-    const targetName = langNames[targetLang] || targetLang;
-
-    // 1. Yol: Gemini seçilmişse ve API anahtarı varsa
-    if (apiKey && engine === 'gemini') {
-      const prompt = `Translate the following text into ${targetName}. Respond ONLY with the direct translation, nothing else, no markdown, no quotes:\n\n${text}`;
-      const geminiRes = await callGemini(apiKey, prompt, s.aiModel);
-      if (geminiRes) {
-        return { text: geminiRes.text, provider: `Google Gemini AI (${geminiRes.model})`, detectedLang: sourceLang === 'auto' ? '' : sourceLang };
-      }
-    }
-
-    // 2. Yol: MyMemory seçilmişse
-    if (engine === 'mymemory-free') {
-      try {
-        const mUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang === 'auto' ? 'autodetect' : sourceLang}|${targetLang}`;
-        const mRes = await fetch(mUrl);
-        const mData = await mRes.json();
-        if (mData && mData.responseData && mData.responseData.translatedText) {
-          return { text: mData.responseData.translatedText, provider: 'MyMemory (Ücretsiz)', detectedLang: '' };
-        }
-      } catch (err) {
-        console.error('MyMemory error:', err);
-      }
-    }
-
-    // 3. Yol (Varsayılan Ücretsiz): Google Translate GTX API
-    try {
-      const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-      const gRes = await fetch(gUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      const gData = await gRes.json();
-      if (gData && gData[0]) {
-        const trans = gData[0].map((item) => item[0]).filter(Boolean).join('');
-        const detected = gData[2] || '';
-        if (trans) return { text: trans, provider: 'Google Translate (Ücretsiz)', detectedLang: detected };
-      }
-    } catch (err) {
-      console.error('Google GTX error:', err);
-    }
-
-    // Yedek Motor: MyMemory
-    try {
-      const mUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang === 'auto' ? 'autodetect' : sourceLang}|${targetLang}`;
-      const mRes = await fetch(mUrl);
-      const mData = await mRes.json();
-      if (mData && mData.responseData && mData.responseData.translatedText) {
-        return { text: mData.responseData.translatedText, provider: 'MyMemory (Ücretsiz)', detectedLang: '' };
-      }
-    } catch (_) {}
-
-    return { text: 'Çeviri yapılamadı (Bağlantı hatası)', provider: 'Hata', detectedLang: '' };
-  });
-
-  // Gelişmiş Özetleme (Gemini AI + Akıllı Türkçe Çevirili Özetleme)
-  ipcMain.handle('summarize:text', async (_e, { text, history = [] }) => {
-    const allMsgs = [...history, text].filter(Boolean);
-    const fullConversation = allMsgs.join('\n');
-    const s = settings();
-    const apiKey = s.aiKey ? s.aiKey.trim() : '';
-
-    if (apiKey) {
-      const prompt = `Aşağıdaki mesajları ve konuşma geçmişini analiz et. Kimin ne yazdığını, ana konuyu ve amacını Türkçe olarak 1 veya 2 akıcı, net cümleyle özetle. Yanıt olarak yalnızca Türkçe özeti ver, tırnak işareti koyma:\n\n${fullConversation}`;
-      const geminiRes = await callGemini(apiKey, prompt, s.aiModel);
-      if (geminiRes) {
-        return { summary: geminiRes.text, provider: `Google Gemini AI (${geminiRes.model})` };
-      }
-    }
-
-    // Gemini yoksa veya hata verdiyse: Tüm konuşmayı Google Translate ile Türkçe'ye çevirip özet sun!
-    try {
-      const combined = allMsgs.join(' /// ');
-      const gUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=tr&dt=t&q=${encodeURIComponent(combined)}`;
-      const gRes = await fetch(gUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      const gData = await gRes.json();
-      if (gData && gData[0]) {
-        const translatedAll = gData[0].map((item) => item[0]).filter(Boolean).join('');
-        const parts = translatedAll.split('///').map((p) => p.trim()).filter(Boolean);
-        if (parts.length > 1) {
-          const last = parts[parts.length - 1];
-          const prev = parts.slice(0, -1).join(' / ');
-          return {
-            summary: `Son mesaj: "${last}" (Önceki akış: ${prev})`,
-            provider: 'Google Translate (Ücretsiz)'
-          };
-        } else if (parts.length === 1) {
-          return { summary: parts[0], provider: 'Google Translate (Ücretsiz)' };
-        }
-      }
-    } catch (e) {
-      console.error('Fallback translation summary error:', e);
-    }
-
-    if (allMsgs.length > 1) {
-      return { summary: `Gelen ${allMsgs.length} mesajlık konuşma: "${text}"`, provider: 'Yerel' };
-    }
-    return { summary: `Mesaj: "${text}"`, provider: 'Yerel' };
-  });
-
-  ipcMain.handle('settings:save', (_e, partial) => {
-    const s = settings();
-    const { lock, ...rest } = partial || {};
-    Object.assign(s, rest);
-    if (lock && typeof lock.autoLockMinutes === 'number') s.lock.autoLockMinutes = lock.autoLockMinutes;
-    store.save();
-    applyLoginItem();
-    updateTray();
-    if (mainWindow) {
-      const c = themeColors();
-      try { mainWindow.setTitleBarOverlay({ color: c.color, symbolColor: c.symbolColor }); } catch (_) { /* yoksay */ }
-      mainWindow.setBackgroundColor(c.bg);
-    }
-    if (popupWindow) popupWindow.webContents.send('popup:theme', s.theme);
-    return true;
-  });
-
-  ipcMain.handle('lock:set', (_e, pin) => {
-    const s = settings();
-    if (!pin) {
-      s.lock = { ...s.lock, enabled: false, hash: null, salt: null };
-    } else {
-      const salt = crypto.randomBytes(16).toString('hex');
-      s.lock = { ...s.lock, enabled: true, salt, hash: hashPin(pin, salt) };
-    }
-    store.saveNow();
-    updateTray();
-    return s.lock.enabled;
-  });
-
-  ipcMain.handle('lock:verify', (_e, pin) => {
-    const { lock } = settings();
-    if (!lock || !lock.enabled || !lock.hash) return true;
-    const a = Buffer.from(hashPin(pin, lock.salt), 'hex');
-    const b = Buffer.from(lock.hash, 'hex');
-    return a.length === b.length && crypto.timingSafeEqual(a, b);
-  });
-
-  ipcMain.handle('dnd:active', () => isDndActive());
-
-  ipcMain.handle('session:clear', async (_e, partition) => {
-    if (typeof partition !== 'string' || !partition.startsWith('persist:vuno-')) return false;
-    const ses = session.fromPartition(partition);
-    await ses.clearStorageData();
-    await ses.clearCache();
-    return true;
-  });
-
-  // Google tarafından şüpheli olarak damgalanmış eski auth ve domain çerezlerini tamamen sıfırla
-  ipcMain.handle('session:clear-google-cookies', async (_e, partition) => {
-    if (typeof partition !== 'string' || !partition.startsWith('persist:vuno-')) return false;
-    const ses = session.fromPartition(partition);
-    await ses.clearStorageData();
-    await ses.clearCache();
-    return true;
-  });
-
-  // Renderer'dan gelen yeni mesaj bildirimi
-  ipcMain.on('notify', (_e, n) => {
-    const s = settings();
-    if (!s.notifications || isDndActive()) return;
-    const focusedOnIt = mainWindow && mainWindow.isVisible() && mainWindow.isFocused() && n.isActiveAccount;
-    if (focusedOnIt) return;
-
-    let payload = s.showPreview ? n : { ...n, body: 'Yeni mesaj', icon: null };
-    if (n.locked) payload = { ...n, title: n.serviceName, body: 'Yeni mesaj (Vuno kilitli)', icon: null, noReply: true };
-    if (s.popup) {
-      pushPopup(payload);
-    } else if (Notification.isSupported()) {
-      const toast = new Notification({
-        title: `${n.title} • ${n.accountName}`,
-        body: payload.body,
-        icon: ICON_PATH,
-        silent: true
-      });
-      toast.on('click', () => {
-        showMainWindow();
-        sendToMain('vuno:open-notification', { accountId: n.accountId, notifId: n.notifId });
-      });
-      toast.show();
-    }
-    if (s.sound) sendToMain('vuno:play-sound');
-    if (mainWindow && !mainWindow.isFocused()) mainWindow.flashFrame(true);
-  });
-
-  ipcMain.on('badge', (_e, count, dataUrl) => {
-    totalUnread = count;
-    updateTray();
-    if (!mainWindow) return;
-    if (count > 0 && dataUrl) {
-      mainWindow.setOverlayIcon(nativeImage.createFromDataURL(dataUrl), `${count} okunmamış`);
-    } else {
-      mainWindow.setOverlayIcon(null, '');
-    }
-  });
-
-  ipcMain.on('app:quit', () => { isQuitting = true; app.quit(); });
-  ipcMain.on('app:show', () => showMainWindow());
-
-  // Pop-up olayları
-  ipcMain.on('popup:resize', (_e, h) => resizePopup(h));
-  ipcMain.on('popup:reply', (_e, data) => sendToMain('vuno:reply', data));
-  ipcMain.on('popup:open', (_e, data) => {
-    showMainWindow();
-    sendToMain('vuno:open-notification', data);
-  });
-  ipcMain.on('popup:focus', () => { if (popupWindow) popupWindow.focus(); });
-}
+// Çapraz modül referansları
+ctx.sendToMain = windows.sendToMain;
+ctx.showMainWindow = windows.showMainWindow;
+ctx.pushPopup = windows.pushPopup;
+ctx.resizePopup = windows.resizePopup;
+ctx.updateTray = trayModule.updateTray;
+ctx.getAiKey = ai.getAiKey;
 
 /* ----------------------------- Yaşam döngüsü ----------------------------- */
 
 app.whenReady().then(() => {
   store = new Store();
+  logToFile('[BOOT] Vuno Connect başladı, chrome ' + process.versions.chrome);
 
-  // Gmail hesaplarının daha önce damgalanmış eski Google çerezlerini sıfırla (tüm partition, origin kısıtı olmadan)
+  // Eski kayıtlarda düz metin duran Gemini anahtarını safeStorage'a taşı
   try {
-    const accs = store.get('accounts') || [];
-    for (const a of accs) {
-      if (a.service === 'gmail') {
-        const ses = session.fromPartition(`persist:vuno-${a.id}`);
-        ses.clearStorageData().catch(() => {});
-        ses.clearCache().catch(() => {});
-      }
+    const s = settings();
+    if (s.aiKey && s.aiKey.trim() && require('electron').safeStorage.isEncryptionAvailable()) {
+      s.aiKeyEnc = require('electron').safeStorage.encryptString(s.aiKey.trim()).toString('base64');
+      s.aiKey = '';
+      store.saveNow();
+      logToFile('[BOOT] Gemini anahtarı safeStorage ile şifrelendi');
     }
   } catch (_) {}
 
-  setupWebContentsHandling();
-  setupIpc();
-  createMainWindow();
-  createTray();
+  security.setupWebContentsHandling();
+  ipcModule.setupIpc();
+  ai.setupAiIpc();
+  updater.setupIpc();
+  windows.createMainWindow();
+  trayModule.createTray();
+
+  process.on('uncaughtException', (e) => console.error('[vuno] beklenmeyen hata:', e));
+  app.on('child-process-gone', (_e, details) => {
+    console.error('[vuno] child-process-gone:', JSON.stringify(details));
+  });
+  app.on('render-process-gone', (_e, wc, details) => {
+    console.error('[vuno] render-process-gone:', JSON.stringify(details));
+  });
+  app.on('gpu-process-gone', (_e, details) => {
+    console.error('[vuno] gpu-process-gone:', JSON.stringify(details));
+  });
+
   applyLoginItem();
   startIdleWatcher();
+  updater.startAutoCheck();
 
   powerMonitor.on('lock-screen', () => {
-    if (settings().lock && settings().lock.enabled) sendToMain('vuno:lock');
+    if (settings().lock && settings().lock.enabled) ctx.sendToMain('vuno:lock');
   });
 
   // Zamanlanmış Rahatsız Etme modunun tepsiye yansıması için periyodik güncelleme
-  setInterval(updateTray, 60000);
+  setInterval(trayModule.updateTray, 60000);
 
   if (process.env.VUNO_SMOKE) runSmokeTest(process.env.VUNO_SMOKE);
 });
@@ -777,7 +205,7 @@ function runSmokeTest(outDir) {
   });
   mainWindow.show();
   setTimeout(() => {
-    pushPopup({
+    windows.pushPopup({
       key: 'demo', accountId: 'demo', notifId: 'demo', accountName: 'Kişisel', serviceName: 'WhatsApp',
       serviceIcon: 'whatsapp', serviceLetter: 'W', gradient: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
       title: 'Ayşe Yılmaz', body: 'Akşam yemeğe geliyor musun? 🍝 Saat 8 gibi buluşalım.', icon: null
@@ -795,21 +223,25 @@ function runSmokeTest(outDir) {
     }
   }, 9000);
   setTimeout(async () => {
-    fs.mkdirSync(outDir, { recursive: true });
-    const img = await mainWindow.webContents.capturePage();
-    fs.writeFileSync(path.join(outDir, 'main.png'), img.toPNG());
-    if (popupWindow) {
-      const p = await popupWindow.webContents.capturePage();
-      fs.writeFileSync(path.join(outDir, 'popup.png'), p.toPNG());
+    try {
+      fs.mkdirSync(outDir, { recursive: true });
+      const img = await mainWindow.webContents.capturePage();
+      fs.writeFileSync(path.join(outDir, 'main.png'), img.toPNG());
+      if (popupWindow) {
+        const p = await popupWindow.webContents.capturePage();
+        fs.writeFileSync(path.join(outDir, 'popup.png'), p.toPNG());
+      }
+    } catch (err) {
+      console.error('[smoke] ekran görüntüsü alınamadı:', err.message);
     }
     console.log('SMOKE_OK');
-    isQuitting = true;
+    ctx.isQuitting = true;
     app.quit();
   }, Number(process.env.VUNO_SMOKE_WAIT || 5000));
 }
 
 app.on('before-quit', () => {
-  isQuitting = true;
+  ctx.isQuitting = true;
   if (store) store.saveNow();
 });
 

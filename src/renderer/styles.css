@@ -1,4 +1,4 @@
-/* ===================== Vuno Messenger — Tasarım sistemi ===================== */
+/* ===================== Vuno Connect — Tasarım sistemi ===================== */
 :root {
   --font: 'Inter', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Outfit', 'Inter', sans-serif;
@@ -835,4 +835,19 @@ label.setting { cursor: pointer; }
   top: -2px;
   left: -2px;
   font-size: 10px;
+}
+
+/* ── Güncelleme (oto-update) ─────────────────────────── */
+.update-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(128, 128, 160, 0.18);
+  overflow: hidden;
+  margin: 4px 0 10px;
+}
+.update-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c4dff, #b388ff);
+  transition: width 0.25s ease;
 }

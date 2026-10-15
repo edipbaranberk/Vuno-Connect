@@ -6,6 +6,28 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 // Google / Microsoft / Proton oturum açma sayfaları kontrolü
 const isAuthHost = typeof location !== 'undefined' && /accounts\.google\.com|login\.live\.com|login\.microsoftonline\.com|account\.proton\.me/i.test(location.hostname || '');
 
+// Tarayıcı parmak izi maskesi — ana dünyada, tüm sayfalarda (CDP kullanılmıyor!)
+const MASK_WORLD = `(() => {
+  try {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined, configurable: true });
+    delete Object.getPrototypeOf(navigator).webdriver;
+  } catch (_) {}
+  try {
+    if (!window.chrome) window.chrome = {};
+    if (!window.chrome.app) {
+      window.chrome.app = {
+        isInstalled: false,
+        InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' },
+        RunningState: { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }
+      };
+    }
+  } catch (_) {}
+})();`;
+
+try {
+  webFrame.executeJavaScript(MASK_WORLD).catch(() => {});
+} catch (_) {}
+
 if (!isAuthHost) {
   try {
     contextBridge.exposeInMainWorld('__vunoBridge', {
