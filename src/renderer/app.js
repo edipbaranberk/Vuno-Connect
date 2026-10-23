@@ -297,14 +297,20 @@
         acc.lastActive = Date.now();
         if (state.unread[id]) {
           state.unread[id] = 0;
-          updateBadges();
+          renderSidebar();
+        }
+
+        let entry = webviews.get(id);
+        if (entry) {
+          entry.highestNotifiedCount = 0;
+          if (entry.recentNotifSigs) entry.recentNotifSigs.clear();
         }
 
         if (!webviews.has(id)) {
           createWebview(acc);
+          entry = webviews.get(id);
         }
 
-        const entry = webviews.get(id);
         if (entry?.wv && acc.service === 'gmail') {
           try {
             const curUrl = entry.wv.getURL();
@@ -360,27 +366,41 @@
 
     wv.addEventListener('page-title-updated', (e) => {
       const m = /\((\d+)\)/.exec(e.title) || /^(\d+)\s/.exec(e.title);
-      const count = m ? parseInt(m[1], 10) : 0;
-      const prev = state.unread[acc.id] || 0;
       const isFocused = state.activeId === acc.id && state.windowFocused;
-      const actualCount = isFocused ? 0 : count;
 
-      if (state.unread[acc.id] !== actualCount) {
-        state.unread[acc.id] = actualCount;
-        renderSidebar();
+      if (isFocused) {
+        if (state.unread[acc.id]) {
+          state.unread[acc.id] = 0;
+          renderSidebar();
+        }
+        entry.highestNotifiedCount = 0;
+        return;
       }
 
-      // Gmail veya sayfa bildirim API'sini tetiklemeyen servisler için sekme başlığı artışından Windows masaüstü bildirimi gönder
-      if (count > prev && count > 0 && !isFocused) {
-        const recentRealNotif = entry.lastNotif && (Date.now() - entry.lastNotif.at < 8000);
-        if (!recentRealNotif) {
-          const svc = window.getService(acc.service);
-          handleIncoming(acc, {
-            id: 'title-fallback-' + Date.now(),
-            title: svc ? svc.name : 'Yeni Bildirim',
-            body: `${acc.name} hesabında ${count} okunmamış yeni ileti`,
-            icon: ''
-          });
+      // Sayfa başlığında okunmamış sayısı varsa
+      if (m) {
+        const count = parseInt(m[1], 10);
+        if (state.unread[acc.id] !== count) {
+          state.unread[acc.id] = count;
+          renderSidebar();
+        }
+
+        // Title-fallback bildirimi:
+        // Yalnızca okunmamış sayısı bu oturumda daha önce bildirdiğimiz sayıyı aştığında bildir!
+        // Kullanıcı açmadığı sürece aynı sayı (örneğin 1) için ASLA tekrar bildirim atılmaz.
+        if (count > (entry.highestNotifiedCount || 0)) {
+          entry.highestNotifiedCount = count;
+          // Eğer son 30 saniye içinde web servisin kendisinden bildirim geldiyse mükerrer olmasın
+          const recentRealNotif = entry.lastNotif && (Date.now() - entry.lastNotif.at < 30000);
+          if (!recentRealNotif) {
+            const svc = window.getService(acc.service);
+            handleIncoming(acc, {
+              id: 'title-fallback-' + Date.now(),
+              title: svc ? svc.name : 'Yeni Bildirim',
+              body: `${acc.name} hesabında ${count} okunmamış yeni ileti`,
+              icon: ''
+            });
+          }
         }
       }
     });
@@ -419,7 +439,7 @@
     wrap.appendChild(wv);
     $('#webviews').appendChild(wrap);
 
-    const entry = { wrap, wv, ready: false, loading: true, lastNotif: null, hibernating: false, createdTime: Date.now() };
+    const entry = { wrap, wv, ready: false, loading: true, lastNotif: null, hibernating: false, createdTime: Date.now(), highestNotifiedCount: 0, recentNotifSigs: new Map() };
     webviews.set(acc.id, entry);
     bindWebviewEvents(acc, entry);
   }
@@ -453,19 +473,39 @@
     if (!n || (!n.title && !n.body)) return;
     const entry = webviews.get(acc.id);
 
-    const sig = `${n.tag}|${n.title}|${n.body}`;
-    if (entry && entry.lastNotif && entry.lastNotif.sig === sig && Date.now() - entry.lastNotif.at < 2500) return;
-    if (entry) entry.lastNotif = { sig, at: Date.now() };
-
-    const svc = window.getService(acc.service);
     const isCurrentActive = state.activeId === acc.id && state.windowFocused;
+    if (isCurrentActive) return; // Kullanıcı zaten aktif olarak bu hesapta ve pencere odakta!
 
-    if (!isCurrentActive) {
+    const now = Date.now();
+    const sig = `${n.tag || ''}|${n.title}|${n.body}`;
+
+    if (entry) {
+      if (!entry.recentNotifSigs) entry.recentNotifSigs = new Map();
+      // 2 dakikadan eski imzaları temizle
+      for (const [s, ts] of entry.recentNotifSigs) {
+        if (now - ts > 120000) entry.recentNotifSigs.delete(s);
+      }
+      // Aynı bildirim (aynı tag veya başlık+metin) son 60 saniye içinde gösterildiyse mükerrer olarak engelle
+      const lastSeen = entry.recentNotifSigs.get(sig);
+      if (lastSeen && now - lastSeen < 60000) return;
+
+      entry.recentNotifSigs.set(sig, now);
+      entry.lastNotif = { sig, at: now };
+      entry.highestNotifiedCount = Math.max(entry.highestNotifiedCount || 0, state.unread[acc.id] || 0);
+    }
+
+    // Title-fallback değilse ve gerçek bildirimse unread sayısını artır
+    if (!n.id?.startsWith('title-fallback-')) {
       state.unread[acc.id] = (state.unread[acc.id] || 0) + 1;
+      if (entry) {
+        entry.highestNotifiedCount = Math.max(entry.highestNotifiedCount || 0, state.unread[acc.id]);
+      }
       renderSidebar();
     }
 
     if (acc.muted) return;
+
+    const svc = window.getService(acc.service);
 
     window.vuno.notify({
       key: uid(),
@@ -479,7 +519,8 @@
       gradient: svc.gradient,
       title: n.title ? `${n.title} (${svc.name})` : `${acc.name} (${svc.name})`,
       body: n.body || 'Yeni mesaj',
-      icon: acc.customIcon || n.icon || ''
+      icon: acc.customIcon || n.icon || '',
+      isActiveAccount: false
     });
   }
 
@@ -1143,8 +1184,12 @@
     if (f && state.activeId) {
       if (state.unread[state.activeId]) {
         state.unread[state.activeId] = 0;
-        updateBadges();
         renderSidebar();
+      }
+      const entry = webviews.get(state.activeId);
+      if (entry) {
+        entry.highestNotifiedCount = 0;
+        if (entry.recentNotifSigs) entry.recentNotifSigs.clear();
       }
     }
   });
