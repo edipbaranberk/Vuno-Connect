@@ -125,7 +125,7 @@ window.VUNO_SERVICES = [
     id: 'outlook',
     name: 'Outlook',
     category: 'email',
-    url: 'https://outlook.live.com/mail/',
+    url: 'https://outlook.live.com/mail/0/',
     color: '#0078D4',
     gradient: 'linear-gradient(135deg, #0078D4 0%, #005A9E 100%)',
     icon: 'microsoftoutlook',

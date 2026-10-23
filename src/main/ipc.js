@@ -4,6 +4,7 @@ const {
 } = require('electron');
 const crypto = require('crypto');
 const { chromelessUserAgent } = require('./userAgent');
+const { resolveNotificationIcon } = require('./notificationIcons');
 
 module.exports = function createIpcModule(ctx) {
   function setupIpc() {
@@ -134,7 +135,7 @@ module.exports = function createIpcModule(ctx) {
     });
 
     // Renderer'dan gelen yeni mesaj bildirimi
-    ipcMain.on('notify', (_e, n) => {
+    ipcMain.on('notify', async (_e, n) => {
       const s = ctx.settings();
       if (!s.notifications || ctx.isDndActive()) return;
       const mw = ctx.mainWindow;
@@ -143,13 +144,14 @@ module.exports = function createIpcModule(ctx) {
 
       let payload = s.showPreview ? n : { ...n, body: 'Yeni mesaj', icon: null };
       if (n.locked) payload = { ...n, title: n.serviceName, body: 'Yeni mesaj (Vuno kilitli)', icon: null, noReply: true };
-      if (s.popup) {
-        ctx.pushPopup(payload);
-      } else if (Notification.isSupported()) {
+
+      const notifIcon = await resolveNotificationIcon(payload, ctx.paths.ICON_PATH);
+
+      if (Notification.isSupported()) {
         const toast = new Notification({
           title: `${n.title} • ${n.accountName}`,
           body: payload.body,
-          icon: ctx.paths.ICON_PATH,
+          icon: notifIcon,
           silent: true
         });
         toast.on('click', () => {

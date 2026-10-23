@@ -72,6 +72,7 @@ module.exports = function createAiModule(ctx) {
       }
     });
 
+
     // Güvenli ve çoklu kaynaklı Çeviri (Gemini AI + Ücretsiz Google Translate + MyMemory)
     ipcMain.handle('translate:text', async (_e, { text, targetLang = 'tr', sourceLang = 'auto' }) => {
       if (!text || !text.trim()) return { text: '', provider: '', detectedLang: '' };

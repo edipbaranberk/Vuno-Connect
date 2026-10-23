@@ -40,11 +40,6 @@
   <div class="app">
     <!-- Kenar çubuğu -->
     <nav class="sidebar" id="sidebar" aria-label="Servisler">
-      <button class="side-btn inbox-btn active" id="btn-inbox" data-tip="Birleşik Gelen Kutusu">
-        <svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-        <span class="badge" id="inbox-badge" hidden>0</span>
-      </button>
-      <div class="side-sep"></div>
       <div class="account-list" id="account-list"></div>
       <button class="side-btn add-btn" id="btn-add" data-tip="Servis ekle">
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
@@ -55,10 +50,6 @@
       <!-- Hızlı Şablonlar Butonu -->
       <button class="side-btn small" id="btn-open-templates" data-tip="Hazır Cevap Şablonları">
         <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      </button>
-      <!-- Ses Kaydı / Ses Metne Dökücü -->
-      <button class="side-btn small" id="btn-audio-tool" data-tip="Ses Metne Dökücü / Dikte">
-        <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
       </button>
       <button class="side-btn small" id="btn-dnd" data-tip="Rahatsız Etme">
         <svg viewBox="0 0 24 24"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="m1 1 22 22"/></svg>
@@ -71,39 +62,18 @@
         <svg viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
       </button>
       <button class="side-btn small" id="btn-settings" data-tip="Ayarlar">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1 2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </nav>
 
     <!-- İçerik alanı -->
     <main class="content" id="content">
-      <!-- Birleşik gelen kutusu -->
-      <section class="view inbox-view active" id="view-inbox">
-        <div class="inbox-header">
-          <div>
-            <h1>Birleşik Gelen Kutusu</h1>
-            <p class="muted" id="inbox-subtitle">Tüm servislerden gelen mesajlar tek yerde.</p>
-          </div>
-          <div class="inbox-actions">
-            <button class="btn ghost" id="btn-unread-only" title="Sadece okunmamış mesajları göster">
-              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> Sadece okunmamış
-            </button>
-            <button class="btn ghost" id="btn-mark-all">
-              <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg> Tümünü okundu say
-            </button>
-            <button class="btn ghost" id="btn-clear-inbox">
-              <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg> Temizle
-            </button>
-          </div>
-        </div>
-        <div class="filter-chips" id="filter-chips"></div>
-        <div class="inbox-list" id="inbox-list"></div>
-
-        <!-- Boş durum / hoş geldin -->
-        <div class="empty-state" id="empty-state" hidden>
+      <!-- Hoş geldin / Servis ekleme ekranı (hesap olmadığında gösterilir) -->
+      <section class="view welcome-view active" id="view-welcome">
+        <div class="empty-state">
           <div class="empty-orb"></div>
-          <h2 id="empty-title">Henüz mesaj yok</h2>
-          <p class="muted" id="empty-text">Yeni mesajlar geldiğinde burada görünecek ve buradan cevaplayabileceksin.</p>
+          <h2>Vuno Connect'e Hoş Geldin 👋</h2>
+          <p class="muted">Tüm mesajlaşma servislerini tek bir yerden kolayca yönet. Başlamak için popüler bir servise tıkla veya sol menüdeki <b>+</b> butonunu kullan.</p>
           <div class="welcome-grid" id="welcome-grid"></div>
         </div>
       </section>
@@ -118,7 +88,7 @@
     <div class="modal search-dialog">
       <div class="search-box-head">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="global-search-input" class="search-box-input" placeholder="Tüm servislerde mesaj veya kişi ara..." autocomplete="off" />
+        <input id="global-search-input" class="search-box-input" placeholder="Hesap veya servis ara... (Ctrl+K)" autocomplete="off" />
         <span class="esc-badge">ESC</span>
       </div>
       <div class="search-results-list" id="search-results-list"></div>
@@ -134,56 +104,13 @@
           <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
-      <p class="muted">Sık kullandığın hazır mesajları kaydet; gelen kutusunda tek tıkla yapıştırıp gönder.</p>
+      <p class="muted">Sık kullandığın hazır mesajları kaydet; istediğin zaman panoya kopyala.</p>
       <div class="template-add-row">
         <input class="input" id="new-template-title" placeholder="Başlık (örn. IBAN)" style="max-width:180px;" />
         <input class="input grow" id="new-template-text" placeholder="Gönderilecek hazır mesaj..." />
         <button class="btn primary" id="btn-add-template">Ekle</button>
       </div>
       <div class="templates-list" id="templates-list"></div>
-    </div>
-  </div>
-
-  <!-- Ses Metne Dökücü / Dikte Modalı -->
-  <div class="modal-backdrop" id="audio-modal" hidden>
-    <div class="modal" style="max-width: 500px;">
-      <div class="modal-head">
-        <h2>Ses Metne Dökücü / Dikte 🎙️</h2>
-        <button class="icon-btn" data-close="audio-modal" aria-label="Kapat">
-          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <p class="muted">Mikrofonuna konuşarak sesini anında Türkçe metne dönüştür ve panoya kopyala.</p>
-      <div class="audio-box">
-        <button class="mic-record-btn" id="btn-toggle-mic">
-          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-        </button>
-        <span class="mic-status" id="mic-status">Mikrofona basarak konuşmaya başla</span>
-      </div>
-      <textarea class="input" id="transcribed-text" rows="4" placeholder="Dönüştürülen metin burada belirecek..."></textarea>
-      <div class="modal-foot">
-        <button class="btn ghost" id="btn-clear-audio-text">Temizle</button>
-        <button class="btn primary" id="btn-copy-audio-text">Metni Kopyala</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Hatırlatıcı / Erteleme (Snooze) Modalı -->
-  <div class="modal-backdrop" id="snooze-modal" hidden>
-    <div class="modal" style="max-width: 420px;">
-      <div class="modal-head">
-        <h2>Mesajı Ertele 🕒</h2>
-        <button class="icon-btn" data-close="snooze-modal" aria-label="Kapat">
-          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <p class="muted" id="snooze-target-desc">Bu mesajı ne zaman tekrar hatırlatayım?</p>
-      <div class="snooze-options">
-        <button class="btn ghost full-width" data-snooze-min="15">15 Dakika Sonra</button>
-        <button class="btn ghost full-width" data-snooze-min="60">1 Saat Sonra</button>
-        <button class="btn ghost full-width" data-snooze-min="180">3 Saat Sonra</button>
-        <button class="btn ghost full-width" data-snooze-min="1440">Yarın Sabah (24 Saat)</button>
-      </div>
     </div>
   </div>
 
@@ -235,8 +162,6 @@
           <button class="tab active" data-tab="general">Genel</button>
           <button class="tab" data-tab="notifications">Bildirimler</button>
           <button class="tab" data-tab="dnd">Rahatsız Etme</button>
-          <button class="tab" data-tab="performance">RAM & Performans</button>
-          <button class="tab" data-tab="ai">Yapay Zeka (AI)</button>
           <button class="tab" data-tab="security">Güvenlik</button>
           <button class="tab" data-tab="about">Hakkında</button>
         </div>
@@ -249,6 +174,10 @@
                 <button data-value="light">Aydınlık</button>
                 <button data-value="system">Sistem</button>
               </div>
+            </div>
+            <div class="setting" style="align-items: flex-start;">
+              <div><b>Vurgu Rengi</b><span>Uygulamanın ana tema ve düğme rengi</span></div>
+              <div class="accent-palette" id="accent-palette"></div>
             </div>
             <label class="setting">
               <div><b>Windows ile başlat</b><span>Bilgisayar açıldığında Vuno arka planda başlasın</span></div>
@@ -266,12 +195,8 @@
 
           <div class="panel" data-panel="notifications">
             <label class="setting">
-              <div><b>Masaüstü bildirimleri</b><span>Yeni mesaj gelince bildir</span></div>
+              <div><b>Masaüstü bildirimleri</b><span>Yeni mesaj gelince Windows bildirimi göster</span></div>
               <input type="checkbox" class="switch" data-setting="notifications" />
-            </label>
-            <label class="setting">
-              <div><b>Hızlı cevap pop-up'ı</b><span>Bildirim kartından doğrudan cevap yaz (kapalıysa Windows bildirimi kullanılır)</span></div>
-              <input type="checkbox" class="switch" data-setting="popup" />
             </label>
             <label class="setting">
               <div><b>Mesaj önizlemesi</b><span>Bildirimde mesaj içeriğini göster</span></div>
@@ -303,56 +228,6 @@
                 <span>–</span>
                 <input type="time" class="input small" id="dnd-to" />
               </div>
-            </div>
-          </div>
-
-          <div class="panel" data-panel="performance">
-            <label class="setting">
-              <div><b>RAM Tasarrufu (Sekme Uyku Modu)</b><span>Arka plandaki sekmelerin kaynak kullanımını kısıtlar (Gecikmesiz bildirimler ve anında hızlı cevap için KAPALI önerilir)</span></div>
-              <input type="checkbox" class="switch" data-setting="ramSaver" />
-            </label>
-            <div class="setting">
-              <div><b>Uyutma Süresi</b><span>Sekmeye tıklanmadıktan sonra kaç dakika sonra tasarruf moduna geçilsin</span></div>
-              <select class="input small" id="ram-saver-minutes">
-                <option value="15">15 dakika</option>
-                <option value="30">30 dakika (Önerilen)</option>
-                <option value="60">1 saat</option>
-              </select>
-            </div>
-            <p class="muted small-text">💡 Not: Gelen Kutusu'ndan tek tıkla mesaj yanıtlamak ve arka planda WhatsApp/Instagram bildirimlerini anlık almak için bu ayarın kapalı kalması önerilir.</p>
-          </div>
-
-          <div class="panel" data-panel="ai">
-            <div class="setting">
-              <div><b>Çeviri Motoru (Tüm Kullanıcılar İçin)</b><span>Mesajları çevirirken ve cevap çevirirken kullanılacak motor</span></div>
-              <select class="input" id="tr-engine-select">
-                <option value="google-free">Google Translate (Ücretsiz • Limitsiz & Hızlı)</option>
-                <option value="mymemory-free">MyMemory Translate (Ücretsiz • Alternatif)</option>
-                <option value="gemini">Google Gemini AI (API Anahtarı ile Akıllı Çeviri)</option>
-              </select>
-            </div>
-            <div class="setting">
-              <div><b>Gemini Modeli</b><span>Google Generative AI modeli</span></div>
-              <select class="input" id="ai-model-select">
-                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite (Önerilen • Tamamen Ücretsiz & Hızlı)</option>
-                <option value="gemini-3.8-flash">Gemini 3.8 Flash (Kart Tanımlaması / Bakiye İster 💳)</option>
-              </select>
-            </div>
-            <div class="setting">
-              <div><b>Google Gemini API Anahtarı</b><span>Girdiğinizde AI Önerileri ve Özetleme özellikleri açılır (boşsa ücretsiz çeviriler çalışır)</span></div>
-            </div>
-            <div style="margin-top:10px;">
-              <input type="password" class="input" id="ai-key-input" placeholder="AIzaSy... ile başlayan Gemini API Anahtarı (Opsiyonel)" />
-              <div style="display:flex;gap:8px;margin-top:8px;">
-                <button class="btn primary" id="btn-save-ai-key">Anahtarı Kaydet</button>
-                <button class="btn ghost" id="btn-test-ai-key" type="button">⚡ Bağlantıyı Test Et</button>
-              </div>
-              <div id="ai-test-status" style="margin-top:10px;font-size:12.5px;display:none;"></div>
-            </div>
-            <div style="margin-top:16px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);font-size:12px;color:var(--text-2);line-height:1.6;">
-              💡 <b>Bilgilendirme:</b><br/>
-              • <b>🌐 Çevir</b> ve <b>🌐 [PL] Çevirerek Gönder:</b> API anahtarı olmadan tamamen ücretsizdir.<br/>
-              • <b>✨ AI Önerileri</b> ve <b>📝 Özetle:</b> Yalnızca Gemini anahtarı eklendiğinde aktifleşir.
             </div>
           </div>
 
@@ -404,6 +279,57 @@
             </label>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logo / Simge Değiştirme penceresi -->
+  <div class="modal-backdrop" id="logo-modal" hidden>
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-head">
+        <h2>Simge / Logo Değiştir</h2>
+        <button class="icon-btn" data-close="logo-modal" aria-label="Kapat">
+          <svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p class="muted" id="logo-modal-subtitle">Hesabınız için kenar çubuğunda görünecek simgeyi özelleştirin.</p>
+
+      <div class="logo-modal-body">
+        <!-- Canlı Önizleme -->
+        <div class="logo-preview-box">
+          <div class="logo-preview-icon" id="logo-preview-icon"></div>
+          <div class="logo-preview-meta">
+            <b id="logo-preview-title">Hesap Adı</b>
+            <span class="muted" id="logo-preview-hint">Seçilen simge kenar çubuğunda bu şekilde görünecek</span>
+          </div>
+        </div>
+
+        <!-- 1. Dosya Yükle -->
+        <div class="logo-section-title">Bilgisayarından Özel Resim / Logo Yükle</div>
+        <div class="logo-upload-zone" id="logo-upload-zone">
+          <input type="file" id="logo-file-input" accept="image/png, image/jpeg, image/svg+xml, image/webp, image/x-icon, .ico" style="display:none;" />
+          <button class="btn ghost" id="btn-select-logo-file" type="button">
+            <svg viewBox="0 0 24 24" style="width:16px; height:16px; margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            Resim Dosyası Seç (PNG, JPG, SVG, ICO)
+          </button>
+          <span class="muted" style="font-size:11px; margin-top:6px;">Önerilen boyut: 64x64 veya 128x128 kare</span>
+        </div>
+
+        <!-- 2. Hazır Servis Simgeleri -->
+        <div class="logo-section-title" style="margin-top:16px;">Veya Hazır Servis Simgelerinden Seç</div>
+        <div class="preset-icons-grid" id="preset-icons-grid"></div>
+
+        <!-- 3. Sıfırla -->
+        <div style="margin-top:14px; text-align:right;">
+          <button class="btn ghost sm" id="btn-reset-default-logo" type="button" style="color:var(--text-3); font-size:12px;">
+            ↺ Orijinal Servis Simgesine Dön
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-foot" style="margin-top:20px;">
+        <button class="btn ghost" data-close="logo-modal">Vazgeç</button>
+        <button class="btn primary" id="btn-save-logo">Kaydet</button>
       </div>
     </div>
   </div>

@@ -51,8 +51,12 @@ module.exports = function createSecurityModule(ctx) {
 
         // Harici bağlantıları varsayılan tarayıcıda aç (Giriş/OAuth hariç)
         contents.setWindowOpenHandler(({ url }) => {
-          if (EXTERNAL_ALLOW.test(url)) {
-            return { action: 'allow' };
+          // Microsoft, Google vb. giriş veya servis içi yönlendirmeleri webview içinde aç
+          if (/microsoft|live\.com|office\.com|outlook|accounts\.google|appleid\.apple|account\.proton\.me|login|auth|signin|signup|oauth/i.test(url)) {
+            setImmediate(() => {
+              if (!contents.isDestroyed()) contents.loadURL(url);
+            });
+            return { action: 'deny' };
           }
           if (/^https?:\/\//.test(url)) shell.openExternal(url);
           return { action: 'deny' };

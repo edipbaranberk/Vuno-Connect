@@ -1,18 +1,18 @@
 # Vuno Connect
 
 <p align="center">
-  <img src="assets/icon.png" alt="Vuno Connect Logo" width="96" height="96" />
+  <img src="assets/icon.png" alt="Vuno Connect Logo" width="100" height="100" />
 </p>
 
 <p align="center">
-  <b>Tüm mesajlaşma ve e-posta platformları tek bir şık ve güçlü masaüstü merkezinde.</b><br />
-  WhatsApp, Instagram, Messenger, Telegram, Discord, Gmail, Outlook ve Proton Mail hesaplarınızı aynı anda yönetin, tek bir gelen kutusundan anında takip edin.
+  <b>Tüm mesajlaşma ve e-posta platformlarınız tek bir şık, güvenli ve güçlü masaüstü merkezinde.</b><br />
+  WhatsApp, Instagram, Messenger, Telegram, Discord, Gmail, Outlook, Proton Mail, Slack ve X hesaplarınızı aynı anda yönetin; iş ve kişisel iletişiminizi birbirinden ayırın.
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Electron-30+-47848F?logo=electron&logoColor=white" alt="Electron" />
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" />
   <img src="https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows&logoColor=white" alt="Windows" />
+  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3" />
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" />
 </p>
 
@@ -20,36 +20,53 @@
 
 ## 🌟 Öne Çıkan Özellikler
 
-### 📥 Birleşik Gelen Kutusu (Unified Inbox)
-* Farklı mesajlaşma ve e-posta platformlarından gelen tüm bildirimleri tek bir akışta kronolojik olarak toplayın.
-* Sekmeler arasında kaybolmadan gelen mesajları doğrudan akış içinden okuyun ve cevaplayın.
-* Platform ve hesap filtreleri ile sadece ilgilendiğiniz iletişime odaklanın.
+### 💬 Tek Merkezden Çoklu Platform Yönetimi
+* **Mesajlaşma:** WhatsApp, Instagram Direct, Facebook Messenger, Telegram, Discord, Slack, X (Twitter).
+* **E-Posta:** Gmail, Microsoft Outlook / Hotmail, Proton Mail.
+* Tarayıcıda onlarca sekme arasında kaybolmadan tüm hesaplarınıza sol dockbar üzerinden tek tıkla erişin.
 
-### ✉️ E-Posta Entegrasyonu (Gmail, Outlook, Proton Mail, Yandex)
-* Tarayıcıda onlarca sekme tutmaya gerek kalmadan tüm e-posta hesaplarınıza sol menüden tek tıkla ulaşın.
-* Her hesap tamamen izole oturumda çalışır; iş ve kişisel e-postalarınız birbirine karışmaz.
-* Yeni gelen e-posta bildirimleri anında Birleşik Gelen Kutusu'na düşer.
+### 👥 Çoklu Hesap & Bağımsız Oturum İzolasyonu
+* Aynı platformdan dilediğiniz kadar hesap ekleyin (örneğin 2 farklı WhatsApp veya 3 farklı Instagram hesabı).
+* Her hesap tamamen izole Chromium oturumu (`partition: persist:vuno-...`) içinde çalışır; oturumlar, çerezler ve veriler asla birbirine karışmaz.
+* Resmi web istemcileri doğrudan kullanıldığı için ban veya hesap kısıtlama riski yoktur.
 
-### 🌐 Ücretsiz Anlık & Tersine Çeviri
-* **Gelen Mesajı Çevir:** Yabancı dilde gelen mesajları tek tıkla kendi dilinize çevirin.
-* **Tersine Çevirerek Yanıtla:** Kendi dilinizde yazdığınız cevabı karşı tarafın diline (Lehçe, İngilizce, Almanca vb.) otomatik çevirip iletin.
-* Google Translate ve MyMemory motorları üzerinden API anahtarı gerektirmeden ücretsiz çalışır.
+### 🗂️ Çalışma Alanları (Kişisel & İş Ayrımı)
+* **Kişisel** ve **İş** çalışma alanları ile odaklanmak istediğiniz alana göre filtreleme yapın.
+* Hesapları tek tıkla iş veya kişisel gruplarına taşıyın.
 
-### ✨ Yapay Zeka Destekli Akıllı Yanıtlar (Google Gemini)
-* Mesaj içeriğini analiz eden dinamik akıllı yanıt önerileri.
-* Uzun sohbet geçmişlerini tek tıkla özetleme.
-* Yeni nesil `gemini-3.1-flash-lite` modeliyle ücretsiz kullanım desteği.
+### 🎨 Özel Logo & Simge Yükleme Desteği
+* Kenar çubuğundaki (Dockbar) hesaplarınızın simgelerini tamamen kişiselleştirin.
+* Bilgisayarınızdan dilediğiniz **PNG, JPG, SVG veya ICO** görselini yükleyin ya da hazır servis simgeleri arasından seçim yapın.
+* Atadığınız özel simge hem sol menüde, hem aramada hem de masaüstü bildirimlerinde anında görüntülenir.
 
-### 🛡️ Sıfır Ban Riski & İzolasyon Mimarisi
-* Tersine mühendislik veya gayriresmi API kullanılmaz.
-* Her servis resmi web istemcisiyle (`web.whatsapp.com`, `instagram.com` vb.) bağımsız Chromium partition'ları içinde çalışır.
-* Aynı serviste (örn. 2 farklı WhatsApp veya 3 farklı Instagram hesabı) oturum çakışması olmadan çoklu hesap desteği.
+### 🔔 Akıllı Windows Masaüstü Bildirimleri
+* Windows Bildirim Merkezi (Action Center) ile tam uyumlu yerel masaüstü bildirimleri.
+* **Akıllı İkon Eşleme:** Bildirim kartında mesajı atan kişinin profil fotoğrafı (avatarı) veya ilgili servisin orijinal logosu gösterilir.
+* Bildirime tıklandığında doğrudan ilgili hesaba geçiş yapılır.
 
-### 🔒 Güvenlik, Gizlilik ve Performans
-* **PIN Koruması:** `scrypt` ile şifrelenen yerel uygulama kilidi ve otomatik kilitlenme süresi.
-* **Rahatsız Etme (DND):** Manuel veya saat aralıklı sessize alma modu.
-* **Canlı Soket Desteği:** Arka plandaki servis bağlantıları koparılmaz; yeni bildirimler anında ekrana düşer.
-* **Modern Koyu Arayüz:** Gözü yormayan cam efektli (glassmorphism) modern masaüstü deneyimi.
+### 🎭 Tema & Zengin Vurgu Rengi Paleti
+* **Koyu / Açık Tema:** Sistem temanızla otomatik senkronize olan veya manuel seçilebilen modern arayüz.
+* **Canlı Vurgu Renkleri:** Vuno Moru, Okyanus Mavisi, Zümrüt Yeşili, Gül Pembesi, Günbatımı, Alev Kırmızısı, Kozmik İndigo ve Kehribar seçenekleri.
+
+### 🔒 Güvenlik & Yerel PIN Kilidi
+* `scrypt` algoritmasıyla korunan yerel uygulama kilidi.
+* Ayarlanabilir süreyle boşta kalındığında veya Windows kilitlendiğinde otomatik kilitlenme.
+* Sıfır telemetri: Tüm hesap bilgileri yalnızca kendi bilgisayarınızda saklanır, harici hiçbir sunucuya veri iletilmez.
+
+### ⚡ Sessize Alma & Rahatsız Etme (DND)
+* Tek tıkla hesap bazında veya tüm uygulama genelinde bildirimleri ve sesleri sessize alma.
+* Sistem tepsisi (System Tray) üzerinden arka planda sessizce çalışabilme.
+
+---
+
+## ⌨️ Klavye Kısayolları
+
+| Kısayol | İşlev |
+| :--- | :--- |
+| **`Ctrl + 1..9`** | Bağlı hesaplar arasında anında geçiş yap |
+| **`Ctrl + K`** | Evrensel arama penceresini aç (hesaplar ve servisler içinde ara) |
+| **`Ctrl + R` / `F5`** | Aktif hesabı / uygulamayı yenile |
+| **`Esc`** | Açık olan modalları ve pencereleri kapat |
 
 ---
 
@@ -57,7 +74,7 @@
 
 ### Gereksinimler
 * [Node.js](https://nodejs.org/) (v18 veya üzeri önerilir)
-* npm veya yarn
+* npm
 
 ### Kurulum
 
@@ -75,53 +92,46 @@ npm install
 npm start
 ```
 
-### Windows Kurulum Dosyası (Installer) Üretme
+### Windows Kurulum Dosyası (Setup .exe) Üretme
 
 ```bash
 npm run dist
 ```
-Çıktı dosyası `dist/` klasörü altına oluşturulacaktır.
+Oluşturulan kurulum dosyası `dist/` klasörü altına kaydedilir (`Vuno-Connect-Setup-1.0.0.exe`).
 
 ---
 
-## ⌨️ Klavye Kısayolları
-
-| Kısayol | İşlev |
-| :--- | :--- |
-| **`Ctrl + 0`** | Birleşik Gelen Kutusu'na git |
-| **`Ctrl + 1..9`** | Sırasıyla bağlı hesaplar arasında hızlı geçiş yap |
-| **`Ctrl + K`** | Evrensel arama penceresini aç |
-| **`Ctrl + R` / `F5`** | Uygulama arayüzünü yenile |
-| **`Esc`** | Açık olan modalları kapat |
-
----
-
-## 📂 Proje Mimarisi
+## 📂 Proje Yapısı
 
 ```
 Vuno-Connect/
-├── assets/                  # Uygulama ikonları ve görsel varlıklar
+├── assets/                  # Logo, tray ve servis PNG ikonları
+│   ├── icon.ico             # Windows çoklu çözünürlüklü uygulama simgesi
+│   ├── icon.png             # Uygulama logosu
+│   ├── tray.png             # Sistem tepsisi simgesi
+│   └── services/            # WhatsApp, Gmail, Outlook vb. yüksek çözünürlüklü simgeler
 ├── src/
-│   ├── main/
-│   │   ├── main.js          # Electron ana süreç, pencere, tepsi (tray) & IPC
-│   │   └── store.js         # JSON tabanlı yerel ayar deposu
-│   ├── preload/
-│   │   ├── app-preload.js   # Ana arayüz güvenlik köprüsü
-│   │   ├── webview-preload.js # Servis içi bildirim ve hızlı cevap yakalayıcı
-│   │   └── popup-preload.js # Masaüstü bildirim kartı köprüsü
-│   ├── popup/               # Ekranın sağ altındaki hızlı yanıt kartları
-│   └── renderer/
-│       ├── index.html       # Ana pencere iskeleti
-│       ├── app.js           # Arayüz durumu, hesap yönetimi ve iş mantığı
-│       ├── services.js      # Desteklenen platform tanımları
-│       └── styles.css       # Tasarım sistemi ve tema stilleri
-├── LICENSE                  # GNU General Public License v3.0
-└── package.json
+│   ├── main/                # Electron ana süreç (Main Process)
+│   │   ├── main.js          # Uygulama yaşam döngüsü & orkestrasyon
+│   │   ├── windows.js       # Pencere yönetimi & simge bağlama
+│   │   ├── security.js      # Oturum güvenliği, OAuth yönlendirmeleri & UA
+│   │   ├── ipc.js           # Ana süreç - Arayüz IPC köprüleri
+│   │   ├── notificationIcons.js # Bildirim simgeleri & avatar çözücü
+│   │   ├── store.js         # Yerel veri ve ayar saklama
+│   │   └── tray.js          # Sistem tepsisi yönetimi
+│   ├── preload/             # Güvenli preload katmanları
+│   └── renderer/            # Modern arayüz (HTML, CSS, JS)
+│       ├── index.html       # Ana pencere & modallar
+│       ├── styles.css       # Tasarım sistemi & renk temaları
+│       ├── app.js           # Arayüz mantığı, dockbar & hesap yönetimi
+│       └── services.js      # Desteklenen servis kataloğu
+├── Baslat.bat               # Hızlı başlatıcı (CMD penceresi açmadan başlar)
+├── Baslat.vbs               # Tamamen sessiz arka plan başlatıcısı
+└── package.json             # Bağımlılıklar ve derleme yapılandırması
 ```
 
 ---
 
-## 📜 Lisans
+## 📄 Lisans
 
-Bu proje **[GNU General Public License v3.0 (GPLv3)](LICENSE)** ile lisanslanmıştır.  
-Detaylı bilgi için [LICENSE](LICENSE) dosyasını inceleyebilirsiniz.
+Bu proje [GPL-3.0](LICENSE) lisansı ile lisanslanmıştır.

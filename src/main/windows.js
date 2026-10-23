@@ -34,7 +34,7 @@ module.exports = function createWindowsModule(ctx) {
       minHeight: 600,
       show: true,
       title: 'Vuno Connect',
-      icon: ctx.paths.ICON_PATH,
+      icon: ctx.paths.WINDOW_ICON || ctx.paths.ICON_PATH,
       backgroundColor: colors.bg,
       autoHideMenuBar: true,
       webPreferences: {
@@ -46,6 +46,9 @@ module.exports = function createWindowsModule(ctx) {
       }
     });
     ctx.mainWindow = mw;
+    if (process.platform === 'win32' && ctx.paths.WINDOW_ICON) {
+      try { mw.setIcon(ctx.paths.WINDOW_ICON); } catch (_) {}
+    }
 
     mw.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
 

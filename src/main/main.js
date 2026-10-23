@@ -1,7 +1,8 @@
 // Vuno Connect - Ana süreç (main process) — orkestratör
 // Detaylı modüller: windows.js, tray.js, security.js, ai.js, ipc.js, logger.js, userAgent.js, store.js
-const { app, ipcMain, powerMonitor, nativeTheme } = require('electron');
+const { app, shell, ipcMain, powerMonitor, nativeTheme } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const Store = require('./store');
 const { logToFile, attachConsoleHooks } = require('./logger');
@@ -25,6 +26,8 @@ app.userAgentFallback = CHROME_UA;
 
 const ROOT = path.join(__dirname, '..', '..');
 const ICON_PATH = path.join(ROOT, 'assets', 'icon.png');
+const ICON_ICO_PATH = path.join(ROOT, 'assets', 'icon.ico');
+const WINDOW_ICON = process.platform === 'win32' && fs.existsSync(ICON_ICO_PATH) ? ICON_ICO_PATH : ICON_PATH;
 const TRAY_PATH = path.join(ROOT, 'assets', 'tray.png');
 const WEBVIEW_PRELOAD = path.join(__dirname, '..', 'preload', 'webview-preload.js');
 
@@ -38,11 +41,43 @@ let isQuitting = false;
 let totalUnread = 0;
 let idleTimer = null;
 
+app.name = 'Vuno Connect';
 app.setAppUserModelId('com.vuno.connect');
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 // Windows konsolunda "crashpad ... not connected" uyarisi (çoğu zaman zararsiz)
 app.commandLine.appendSwitch('disable-breakpad');
 if (process.env.VUNO_SMOKE_USERDATA) app.setPath('userData', process.env.VUNO_SMOKE_USERDATA);
+
+function ensureWindowsShortcut() {
+  if (process.platform !== 'win32') return;
+  try {
+    const programsDir = path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs');
+    const shortcutPath = path.join(programsDir, 'Vuno Connect.lnk');
+    const icoPath = path.join(ROOT, 'assets', 'icon.ico');
+    const pngPath = path.join(ROOT, 'assets', 'icon.png');
+    const target = process.execPath;
+    const args = app.isPackaged ? '' : `"${ROOT}"`;
+    shell.writeShortcutLink(shortcutPath, 'replace', {
+      target,
+      args,
+      description: 'Vuno Connect',
+      appUserModelId: 'com.vuno.connect',
+      icon: fs.existsSync(icoPath) ? icoPath : target,
+      iconIndex: 0
+    });
+
+    // Windows Bildirim Merkezi için AppUserModelId Registry Kaydı
+    const { exec } = require('child_process');
+    const regKey = 'HKCU\\Software\\Classes\\AppUserModelId\\com.vuno.connect';
+    exec(`reg add "${regKey}" /v DisplayName /t REG_SZ /d "Vuno Connect" /f`);
+    if (fs.existsSync(pngPath)) {
+      exec(`reg add "${regKey}" /v IconUri /t REG_SZ /d "${pngPath}" /f`);
+    }
+    exec(`reg add "${regKey}" /v IconBackgroundColor /t REG_SZ /d "Transparent" /f`);
+  } catch (err) {
+    console.error('[vuno] Windows kısayolu veya bildirim kaydı oluşturulamadı:', err);
+  }
+}
 
 // Tek örnek kilidi: ikinci kez açılırsa mevcut pencereyi öne getir, yenisini anında kapat
 if (!app.requestSingleInstanceLock()) {
@@ -85,8 +120,8 @@ function themeColors() {
   const dark = settings().theme === 'dark' ||
     (settings().theme === 'system' && nativeTheme.shouldUseDarkColors);
   return dark
-    ? { color: '#0b0b14', symbolColor: '#c9c9e0', bg: '#0b0b14' }
-    : { color: '#f4f4fa', symbolColor: '#3a3a55', bg: '#f4f4fa' };
+    ? { color: '#0b0b14', symbolColor: '#ececf7', bg: '#0b0b14' }
+    : { color: '#f4f4fa', symbolColor: '#16162a', bg: '#f4f4fa' };
 }
 
 function applyLoginItem() {
@@ -117,7 +152,7 @@ function startIdleWatcher() {
 
 const ctx = {
   app,
-  paths: { ROOT, ICON_PATH, TRAY_PATH, WEBVIEW_PRELOAD },
+  paths: { ROOT, ICON_PATH, ICON_ICO_PATH, WINDOW_ICON, TRAY_PATH, WEBVIEW_PRELOAD },
   CHROME_UA,
   chromelessUserAgent,
   isGoogleAccountsUrl,
@@ -152,6 +187,7 @@ ctx.getAiKey = ai.getAiKey;
 
 app.whenReady().then(() => {
   store = new Store();
+  ensureWindowsShortcut();
   logToFile('[BOOT] Vuno Connect başladı, chrome ' + process.versions.chrome);
 
   // Eski kayıtlarda düz metin duran Gemini anahtarını safeStorage'a taşı

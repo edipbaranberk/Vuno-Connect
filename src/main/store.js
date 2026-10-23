@@ -16,20 +16,17 @@ const DEFAULTS = {
   ],
   settings: {
     theme: 'dark',
+    accentColor: 'classic',
     notifications: true,
     sound: true,
-    popup: true,
     showPreview: true,
     dnd: false,
     dndSchedule: { enabled: false, from: '23:00', to: '08:00' },
     startWithWindows: false,
     startMinimized: false,
     closeToTray: true,
-    ramSaver: false, // RAM tasarruf modu (arkaplanda mesajların anlık gelmesi ve hızlı cevaplar için varsayılan KAPALI)
-    ramSaverMinutes: 30,
     lock: { enabled: false, hash: null, salt: null, autoLockMinutes: 0 },
-    autoUpdate: false, // Yeni sürüm bulununca sormadan indirip kur
-    aiKey: '' // İsteğe bağlı Gemini / OpenAI API anahtarı
+    autoUpdate: false
   },
   window: { width: 1360, height: 860, x: undefined, y: undefined, maximized: false }
 };
@@ -55,6 +52,25 @@ class Store {
       }
     } catch (err) {
       console.error('Ayarlar okunamadı, varsayılanlar kullanılıyor:', err);
+    }
+        // Geriye dönük uyumluluk: Eğer Vuno Connect'te hesap yoksa ama eski Vuno Messenger'da varsa otomatik aktar
+    if (!this.data.accounts || this.data.accounts.length === 0) {
+      try {
+        const legacyFile = path.join(app.getPath('appData'), 'Vuno Messenger', 'config.json');
+        if (fs.existsSync(legacyFile)) {
+          const legacyData = JSON.parse(fs.readFileSync(legacyFile, 'utf8'));
+          if (legacyData.accounts && legacyData.accounts.length > 0) {
+            this.data = deepMerge(this.data, legacyData);
+            this.saveNow();
+
+            const legacyPartitions = path.join(app.getPath('appData'), 'Vuno Messenger', 'Partitions');
+            const targetPartitions = path.join(app.getPath('userData'), 'Partitions');
+            if (fs.existsSync(legacyPartitions) && !fs.existsSync(targetPartitions)) {
+              fs.cpSync(legacyPartitions, targetPartitions, { recursive: true });
+            }
+          }
+        }
+      } catch (e) { }
     }
     this._timer = null;
   }
@@ -85,3 +101,4 @@ class Store {
 }
 
 module.exports = Store;
+
